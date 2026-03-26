@@ -691,8 +691,7 @@ st.markdown(
 left_col, right_col = st.columns(2)
 
 with left_col:
-    st.markdown("<h3 style='min-height:1.8em;'>体脂肪率</h3>", unsafe_allow_html=True)
-    st.markdown("<p class='section-desc'>下がれば脂肪が減ってる証拠。目標12%。</p>", unsafe_allow_html=True)
+    st.markdown("### 体脂肪率（目標12%）")
 
     df_fat = df_view[df_view["体脂肪率(%)"].notna()]
 
@@ -749,8 +748,7 @@ with left_col:
     )
 
 with right_col:
-    st.markdown("<h3 style='min-height:1.8em;'>基礎代謝の推移</h3>", unsafe_allow_html=True)
-    st.markdown("<p class='section-desc'>筋肉が増えれば上がる。減れば下がる。<br>シンプルな実力値。</p>", unsafe_allow_html=True)
+    st.markdown("### 基礎代謝の推移")
 
     df_bmr = df_view[df_view["基礎代謝(kcal)"].notna()] if "基礎代謝(kcal)" in df_view.columns else pd.DataFrame()
 
