@@ -91,6 +91,16 @@ st.markdown("""
             flex: 1 1 100% !important;
             min-width: 100% !important;
         }
+        /* セクション間の余白 */
+        .section-desc {
+            margin-top: 16px !important;
+        }
+        .summary-card {
+            margin-bottom: 8px;
+        }
+        .metric-card {
+            margin-bottom: 8px;
+        }
         .metric-value {
             font-size: 32px;
         }
@@ -273,7 +283,7 @@ with col4:
     </div>
     """, unsafe_allow_html=True)
 
-st.markdown("<br>", unsafe_allow_html=True)
+st.markdown("<div style='margin-top:24px;'></div>", unsafe_allow_html=True)
 
 # === 全体サマリー ===
 st.markdown("### 全体サマリー")
@@ -384,7 +394,7 @@ with summary_col3:
         """, unsafe_allow_html=True)
 
 # --- 目標達成に必要なアクション ---
-st.markdown("<br>", unsafe_allow_html=True)
+st.markdown("<div style='margin-top:24px;'></div>", unsafe_allow_html=True)
 st.markdown("### 🎯 目標達成に必要なアクション")
 st.markdown("<p class='section-desc'>エビデンスベースの減量科学とあなたのデータから逆算。</p>", unsafe_allow_html=True)
 
@@ -558,7 +568,7 @@ with st.expander("その他のアクション", expanded=False):
         """
     st.markdown(other_html, unsafe_allow_html=True)
 
-st.markdown("<br>", unsafe_allow_html=True)
+st.markdown("<div style='margin-top:24px;'></div>", unsafe_allow_html=True)
 
 # === 共通期間切り替え ===
 period_options = {"全期間": None, "1年": 365, "半年": 180, "3ヶ月": 90, "1ヶ月": 30, "1週間": 7}
