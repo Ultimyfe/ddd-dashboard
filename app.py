@@ -720,25 +720,30 @@ with left_col:
     )
     st.plotly_chart(fig_fat, use_container_width=True)
 
-    # 体脂肪率 FEEDBACK（選択期間ベース）
+    # 体脂肪率 FEEDBACK（選択期間の直近トレンドで判定）
     current_fat = df[df["体脂肪率(%)"].notna()].iloc[-1]["体脂肪率(%)"]
     fat_to_goal = current_fat - TARGET_FAT
-    if len(df_fat) >= 3:
-        fat_first = df_fat["体脂肪率(%)"].iloc[0]
-        fat_last = df_fat["体脂肪率(%)"].iloc[-1]
-        fat_change = fat_last - fat_first
-        if fat_change > 0.5:
-            fb_fat_text = f"{period_label}で+{fat_change:.1f}%。増加中。"
-            fb_fat_color = "#ff4444"
-        elif fat_change < -0.5:
-            fb_fat_text = f"{period_label}で{fat_change:.1f}%。減少中。続けろ。"
-            fb_fat_color = "#00ff88"
-        else:
-            fb_fat_text = f"{period_label}で{fat_change:+.1f}%。横ばい。目標{TARGET_FAT:.0f}%まであと{fat_to_goal:.1f}%。"
-            fb_fat_color = "#ffaa00"
+    if len(df_fat) >= 14:
+        quarter_len = max(len(df_fat) // 4, 7)
+        fat_recent = df_fat.tail(quarter_len)["体脂肪率(%)"]
+        fat_trend = fat_recent.iloc[-1] - fat_recent.iloc[0]
+    elif len(df_fat) >= 3:
+        fat_trend = df_fat["体脂肪率(%)"].iloc[-1] - df_fat["体脂肪率(%)"].iloc[0]
     else:
+        fat_trend = None
+
+    if fat_trend is None:
         fb_fat_text = "データ不足。まず毎日測れ。"
         fb_fat_color = "#ff4444"
+    elif fat_trend > 0.5:
+        fb_fat_text = f"{period_label}の直近トレンド: +{fat_trend:.1f}%。増加中。"
+        fb_fat_color = "#ff4444"
+    elif fat_trend < -0.5:
+        fb_fat_text = f"{period_label}の直近トレンド: {fat_trend:.1f}%。減少中。続けろ。"
+        fb_fat_color = "#00ff88"
+    else:
+        fb_fat_text = f"{period_label}の直近トレンド: {fat_trend:+.1f}%。横ばい。目標{TARGET_FAT:.0f}%まであと{fat_to_goal:.1f}%。"
+        fb_fat_color = "#ffaa00"
 
     st.markdown(
         f"<div style='background:#1a1a2e; border-left:3px solid {fb_fat_color}; padding:8px 12px; border-radius:4px;'>"
@@ -773,24 +778,29 @@ with right_col:
         )
         st.plotly_chart(fig_bmr, use_container_width=True)
 
-        # 基礎代謝 FEEDBACK（選択期間ベース）
+        # 基礎代謝 FEEDBACK（選択期間の直近トレンドで判定）
         current_bmr = df_bmr["基礎代謝(kcal)"].iloc[-1]
-        if len(df_bmr) >= 3:
-            bmr_first = df_bmr["基礎代謝(kcal)"].iloc[0]
-            bmr_last = df_bmr["基礎代謝(kcal)"].iloc[-1]
-            bmr_change = bmr_last - bmr_first
-            if bmr_change > 10:
-                fb_bmr_text = f"{period_label}で+{bmr_change:.0f}kcal。筋肉がついてきてる。現在{current_bmr:.0f}kcal。"
-                fb_bmr_color = "#00ff88"
-            elif bmr_change < -10:
-                fb_bmr_text = f"{period_label}で{bmr_change:.0f}kcal。筋肉が減ってる可能性あり。"
-                fb_bmr_color = "#ff4444"
-            else:
-                fb_bmr_text = f"{period_label}で{bmr_change:+.0f}kcal。横ばい。現在{current_bmr:.0f}kcal。"
-                fb_bmr_color = "#ffaa00"
+        if len(df_bmr) >= 14:
+            quarter_len = max(len(df_bmr) // 4, 7)
+            bmr_recent = df_bmr.tail(quarter_len)["基礎代謝(kcal)"]
+            bmr_trend = bmr_recent.iloc[-1] - bmr_recent.iloc[0]
+        elif len(df_bmr) >= 3:
+            bmr_trend = df_bmr["基礎代謝(kcal)"].iloc[-1] - df_bmr["基礎代謝(kcal)"].iloc[0]
         else:
+            bmr_trend = None
+
+        if bmr_trend is None:
             fb_bmr_text = "データ不足。まず毎日測れ。"
             fb_bmr_color = "#ff4444"
+        elif bmr_trend > 10:
+            fb_bmr_text = f"{period_label}の直近トレンド: +{bmr_trend:.0f}kcal。筋肉がついてきてる。現在{current_bmr:.0f}kcal。"
+            fb_bmr_color = "#00ff88"
+        elif bmr_trend < -10:
+            fb_bmr_text = f"{period_label}の直近トレンド: {bmr_trend:.0f}kcal。筋肉が減ってる可能性あり。"
+            fb_bmr_color = "#ff4444"
+        else:
+            fb_bmr_text = f"{period_label}の直近トレンド: {bmr_trend:+.0f}kcal。横ばい。現在{current_bmr:.0f}kcal。"
+            fb_bmr_color = "#ffaa00"
 
         st.markdown(
             f"<div style='background:#1a1a2e; border-left:3px solid {fb_bmr_color}; padding:8px 12px; border-radius:4px;'>"
