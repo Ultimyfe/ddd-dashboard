@@ -573,7 +573,7 @@ with st.expander("その他のアクション", expanded=False):
 st.markdown("<div style='margin-top:24px;'></div>", unsafe_allow_html=True)
 
 # === 共通期間切り替え ===
-period_options = {"全期間": None, "1年": 365, "半年": 180, "3ヶ月": 90, "1ヶ月": 30, "1週": 7}
+period_options = {"全期間": None, "1年": 365, "半年": 180, "3ヶ月": 90, "1ヶ月": 30, "1週間": 7}
 selected_period = st.segmented_control("表示期間", options=list(period_options.keys()), default="全期間")
 period_days = period_options[selected_period]
 
