@@ -131,12 +131,8 @@ st.markdown("""
             padding: 12px;
             margin-bottom: 4px;
         }
-        .summary-card p {
+        .summary-card p:not(.summary-number) {
             font-size: 13px !important;
-        }
-        .summary-card p[style*="font-size:36px"],
-        .summary-card p[style*="font-size:48px"] {
-            font-size: inherit !important;
         }
         .summary-card p b {
             font-size: 14px !important;
@@ -358,7 +354,7 @@ if mc_median is not None:
     <div class="summary-card">
         <p style="color:#ccc; font-size:14px; margin:0;">今のペースが続いた場合</p>
         <p style="color:#ccc; font-size:14px; margin:4px 0;">{TARGET_DATE.strftime('%Y/%m/%d')}時点の予測体重:</p>
-        <p style="color:{pred_color}; font-size:36px; font-weight:bold; margin:8px 0;">{mc_median:.1f}<span style="font-size:16px;">kg</span></p>
+        <p class="summary-number" style="color:{pred_color}; font-size:36px; font-weight:bold; margin:8px 0;">{mc_median:.1f}<span style="font-size:16px;">kg</span></p>
         <p style="color:#888; font-size:11px; margin:0;">過去の変動パターンから5,000回シミュレーション</p>
     </div>
     """, unsafe_allow_html=True)
@@ -376,7 +372,7 @@ if mc_prob is not None:
     st.markdown(f"""
     <div class="summary-card">
         <p style="color:#ccc; font-size:14px; margin:0;">{TARGET_DATE.strftime('%Y/%m/%d')}までに{TARGET_WEIGHT:.0f}kg達成</p>
-        <p style="color:{prob_color}; font-size:48px; font-weight:bold; margin:8px 0;">{mc_prob:.1f}<span style="font-size:20px;">%</span></p>
+        <p class="summary-number" style="color:{prob_color}; font-size:48px; font-weight:bold; margin:8px 0;">{mc_prob:.1f}<span style="font-size:20px;">%</span></p>
         <div style="background:#333; border-radius:4px; height:8px; margin:8px 0;">
             <div style="background:{prob_color}; border-radius:4px; height:8px; width:{bar_width}%;"></div>
         </div>
