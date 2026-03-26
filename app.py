@@ -256,7 +256,12 @@ with col3:
     df_recent_trend = df[df["日付"] > (today - pd.Timedelta(days=30))]
     daily_trend = df_recent_trend["体重(kg)"].dropna().diff().mean() if len(df_recent_trend) >= 7 else 0
 
-    if daily_trend > 0.01:  # 増加中
+    # 直近7日の移動平均トレンドで判定
+    df_ma_recent = df[df["日付"] > (today - pd.Timedelta(days=7))]
+    ma_vals = df_ma_recent["7日移動平均(kg)"].dropna()
+    weekly_trend = (ma_vals.iloc[-1] - ma_vals.iloc[0]) if len(ma_vals) >= 2 else daily_trend * 7
+
+    if daily_trend > 0.01:  # 増加中 → 破滅カウントダウン
         remaining_to_doom = START_WEIGHT - weight
         doom_days = int(remaining_to_doom / daily_trend)
         color = "danger" if doom_days < 365 else "warning" if doom_days < 1000 else "info"
@@ -267,18 +272,21 @@ with col3:
             <p class="metric-sub">105.7kgに届くまで</p>
         </div>
         """, unsafe_allow_html=True)
-    elif daily_trend < -0.01:  # 減少中
+    elif daily_trend < -0.01:  # 減少中 → 最低体重到達カウントダウン
+        remaining_to_min = weight - min_weight
+        days_to_min = int(remaining_to_min / abs(daily_trend))
+        color = "info" if days_to_min < 90 else "warning" if days_to_min < 180 else "neutral"
         st.markdown(f"""
         <div class="metric-card" style="height:140px;">
-            <p class="metric-label">直近30日のトレンド</p>
-            <p class="metric-value info">減少中 📉</p>
-            <p class="metric-sub">油断するな。</p>
+            <p class="metric-label">最低体重到達まで</p>
+            <p class="metric-value {color}">{days_to_min}<span style="font-size:20px">日</span></p>
+            <p class="metric-sub">{min_weight:.1f}kgに届くまで</p>
         </div>
         """, unsafe_allow_html=True)
     else:  # 横ばい
         st.markdown(f"""
         <div class="metric-card" style="height:140px;">
-            <p class="metric-label">直近30日のトレンド</p>
+            <p class="metric-label">トレンド</p>
             <p class="metric-value warning">横ばい ➡️</p>
             <p class="metric-sub">変化なし。行動を変えろ。</p>
         </div>
