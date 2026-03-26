@@ -26,6 +26,16 @@ st.markdown("""
         flex-direction: column;
         justify-content: center;
     }
+    /* カラムコンテナの高さを揃える */
+    [data-testid="stHorizontalBlock"] {
+        align-items: stretch !important;
+    }
+    [data-testid="stColumn"] > div:first-child {
+        height: 100%;
+    }
+    [data-testid="stColumn"] > div:first-child > div:first-child {
+        height: 100%;
+    }
     .summary-card {
         background: #1a1a2e;
         border: 1px solid #333;
