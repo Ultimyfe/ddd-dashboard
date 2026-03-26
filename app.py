@@ -131,8 +131,11 @@ st.markdown("""
             padding: 12px;
             margin-bottom: 4px;
         }
-        .summary-card p:not(.summary-number) {
+        .summary-card p {
             font-size: 13px !important;
+        }
+        .summary-card p span {
+            font-size: 11px !important;
         }
         .summary-card p b {
             font-size: 14px !important;
