@@ -658,25 +658,34 @@ fig_weight.update_layout(
 
 st.plotly_chart(fig_weight, use_container_width=True)
 
-# ネクストアクション
-df_recent_7 = df[df["日付"] > (today - pd.Timedelta(days=7))]
-df_recent_30 = df[df["日付"] > (today - pd.Timedelta(days=30))]
-recent_trend = df_recent_7["体重(kg)"].diff().mean() if len(df_recent_7) >= 3 else 0
-measured_7 = df_recent_7["体重(kg)"].notna().sum()
+# ネクストアクション（選択期間ベース）
+period_label = selected_period if selected_period != "全期間" else "全期間"
+df_weight_view = df_view[df_view["体重(kg)"].notna()]
+if len(df_weight_view) >= 3:
+    weight_first = df_weight_view["体重(kg)"].iloc[0]
+    weight_last = df_weight_view["体重(kg)"].iloc[-1]
+    weight_change = weight_last - weight_first
+    measured_days = df_weight_view["体重(kg)"].notna().sum()
+    total_days = (df_weight_view["日付"].iloc[-1] - df_weight_view["日付"].iloc[0]).days or 1
+    meas_rate_view = measured_days / total_days * 100
+else:
+    weight_change = 0
+    meas_rate_view = 0
+
 target_daily_loss = (weight - TARGET_WEIGHT) / max(days_left, 1)
 
 # 優先度順に1つだけ表示
-if measured_7 < 5:
-    action_text = "まず毎日体重計に乗れ。直近7日で{}日しか測れていない。".format(measured_7)
+if meas_rate_view < 50 and len(df_weight_view) >= 3:
+    action_text = f"{period_label}の測定率{meas_rate_view:.0f}%。まず毎日体重計に乗れ。"
     action_color = "#ff4444"
-elif recent_trend > 0.05:
-    action_text = "食事を見直せ。直近7日で1日+{:.1f}kgペースで増えている。".format(recent_trend)
+elif weight_change > 0.5:
+    action_text = f"{period_label}で+{weight_change:.1f}kg。食事を見直せ。"
     action_color = "#ff4444"
-elif recent_trend > -0.02:
-    action_text = "運動量を上げろ。目標達成には1日-{:.2f}kgペースが必要。今は横ばい。".format(target_daily_loss)
+elif weight_change > -0.3:
+    action_text = f"{period_label}で{weight_change:+.1f}kg。横ばい。運動量を上げろ。"
     action_color = "#ffaa00"
 else:
-    action_text = "このペースを維持しろ。直近7日で1日{:.2f}kg減少中。".format(recent_trend)
+    action_text = f"{period_label}で{weight_change:.1f}kg。このペースを維持しろ。"
     action_color = "#00ff88"
 
 st.markdown(
@@ -717,22 +726,21 @@ with left_col:
     )
     st.plotly_chart(fig_fat, use_container_width=True)
 
-    # 体脂肪率 FEEDBACK（直近30日の実測データで判定）
-    df_fat_30 = df[(df["日付"] > (today - pd.Timedelta(days=30))) & (df["体脂肪率(%)"].notna())]
+    # 体脂肪率 FEEDBACK（選択期間ベース）
     current_fat = df[df["体脂肪率(%)"].notna()].iloc[-1]["体脂肪率(%)"]
     fat_to_goal = current_fat - TARGET_FAT
-    if len(df_fat_30) >= 3:
-        fat_first = df_fat_30["体脂肪率(%)"].iloc[0]
-        fat_last = df_fat_30["体脂肪率(%)"].iloc[-1]
+    if len(df_fat) >= 3:
+        fat_first = df_fat["体脂肪率(%)"].iloc[0]
+        fat_last = df_fat["体脂肪率(%)"].iloc[-1]
         fat_change = fat_last - fat_first
         if fat_change > 0.5:
-            fb_fat_text = f"30日で+{fat_change:.1f}%。体脂肪率が増加中。"
+            fb_fat_text = f"{period_label}で+{fat_change:.1f}%。増加中。"
             fb_fat_color = "#ff4444"
         elif fat_change < -0.5:
-            fb_fat_text = f"30日で{fat_change:.1f}%。減少中。続けろ。"
+            fb_fat_text = f"{period_label}で{fat_change:.1f}%。減少中。続けろ。"
             fb_fat_color = "#00ff88"
         else:
-            fb_fat_text = f"横ばい。目標{TARGET_FAT:.0f}%まであと{fat_to_goal:.1f}%。"
+            fb_fat_text = f"{period_label}で{fat_change:+.1f}%。横ばい。目標{TARGET_FAT:.0f}%まであと{fat_to_goal:.1f}%。"
             fb_fat_color = "#ffaa00"
     else:
         fb_fat_text = "データ不足。まず毎日測れ。"
@@ -771,20 +779,20 @@ with right_col:
         )
         st.plotly_chart(fig_bmr, use_container_width=True)
 
-        # 基礎代謝 FEEDBACK
-        bmr_all = df[df["基礎代謝(kcal)"].notna()]
-        current_bmr = bmr_all.iloc[-1]["基礎代謝(kcal)"]
-        max_bmr = bmr_all["基礎代謝(kcal)"].max()
-        if len(bmr_all) >= 7:
-            bmr_trend = bmr_all.tail(7)["基礎代謝(kcal)"].diff().mean()
-            if bmr_trend > 1:
-                fb_bmr_text = f"上昇中。筋肉がついてきてる。現在{current_bmr:.0f}kcal。"
+        # 基礎代謝 FEEDBACK（選択期間ベース）
+        current_bmr = df_bmr["基礎代謝(kcal)"].iloc[-1]
+        if len(df_bmr) >= 3:
+            bmr_first = df_bmr["基礎代謝(kcal)"].iloc[0]
+            bmr_last = df_bmr["基礎代謝(kcal)"].iloc[-1]
+            bmr_change = bmr_last - bmr_first
+            if bmr_change > 10:
+                fb_bmr_text = f"{period_label}で+{bmr_change:.0f}kcal。筋肉がついてきてる。現在{current_bmr:.0f}kcal。"
                 fb_bmr_color = "#00ff88"
-            elif bmr_trend < -1:
-                fb_bmr_text = f"低下中。筋肉が減ってる可能性あり。筋トレしろ。"
+            elif bmr_change < -10:
+                fb_bmr_text = f"{period_label}で{bmr_change:.0f}kcal。筋肉が減ってる可能性あり。"
                 fb_bmr_color = "#ff4444"
             else:
-                fb_bmr_text = f"横ばい{current_bmr:.0f}kcal。過去最高{max_bmr:.0f}kcalとの差は{max_bmr - current_bmr:.0f}kcal。"
+                fb_bmr_text = f"{period_label}で{bmr_change:+.0f}kcal。横ばい。現在{current_bmr:.0f}kcal。"
                 fb_bmr_color = "#ffaa00"
         else:
             fb_bmr_text = "データ不足。まず毎日測れ。"
