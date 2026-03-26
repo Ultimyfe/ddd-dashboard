@@ -100,10 +100,15 @@ st.markdown("""
 
     /* === スマホ（480px以下） === */
     @media (max-width: 480px) {
-        /* カラムを1列に強制 */
+        /* カラムを2列に強制（2x2グリッド） */
+        [data-testid="stHorizontalBlock"] {
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+        }
         [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
-            flex: 1 1 100% !important;
-            min-width: 100% !important;
+            flex: 1 1 46% !important;
+            min-width: 46% !important;
+            max-width: 49% !important;
         }
         /* セクション間の余白 */
         .section-desc {
@@ -225,27 +230,12 @@ days_left = (TARGET_DATE - today).days
 st.markdown("# 📊 DataDrivenDiet")
 st.markdown(f"<p style='color:#666; font-size:12px;'>最終更新: {today.strftime('%Y/%m/%d')} | データ: {len(df)}日分 | 目標: {TARGET_DATE.strftime('%Y/%m/%d')}まで（残り{days_left}日）</p>", unsafe_allow_html=True)
 
-# === スコアカード（2行×2列） ===
-weight = latest["体重(kg)"]
-diff_to_target = weight - TARGET_WEIGHT
-rebound = latest["最低体重からの差分(kg)"]
-rebound_color = "danger" if rebound > 10 else "warning" if rebound > 5 else "info"
+# === スコアカード行 ===
+col1, col2, col3, col4 = st.columns(4)
 
-# 破滅/最低体重到達の計算
-START_WEIGHT = 105.7
-df_recent_trend = df[df["日付"] > (today - pd.Timedelta(days=30))]
-daily_trend = df_recent_trend["体重(kg)"].dropna().diff().mean() if len(df_recent_trend) >= 7 else 0
-
-# サボり率の計算
-last_30 = df[df["日付"] > (today - pd.Timedelta(days=30))]
-measured_days = last_30["体重(kg)"].notna().sum()
-skip_days = 30 - measured_days
-skip_rate = (skip_days / 30) * 100
-skip_color = "danger" if skip_rate > 30 else "warning" if skip_rate > 15 else "info"
-
-# --- 1行目 ---
-row1_col1, row1_col2 = st.columns(2)
-with row1_col1:
+with col1:
+    weight = latest["体重(kg)"]
+    diff_to_target = weight - TARGET_WEIGHT
     st.markdown(f"""
     <div class="metric-card" style="height:140px;">
         <p class="metric-label">現在の体重</p>
@@ -254,20 +244,23 @@ with row1_col1:
     </div>
     """, unsafe_allow_html=True)
 
-with row1_col2:
+with col2:
+    rebound = latest["最低体重からの差分(kg)"]
+    color = "danger" if rebound > 10 else "warning" if rebound > 5 else "info"
     st.markdown(f"""
     <div class="metric-card" style="height:140px;">
         <p class="metric-label">リバウンド</p>
-        <p class="metric-value {rebound_color}">+{rebound:.1f}<span style="font-size:20px">kg</span></p>
+        <p class="metric-value {color}">+{rebound:.1f}<span style="font-size:20px">kg</span></p>
         <p class="metric-sub">最低72.4kgからの増加</p>
     </div>
     """, unsafe_allow_html=True)
 
-st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+with col3:
+    # 直近30日のトレンドから破滅日数を計算
+    START_WEIGHT = 105.7
+    df_recent_trend = df[df["日付"] > (today - pd.Timedelta(days=30))]
+    daily_trend = df_recent_trend["体重(kg)"].dropna().diff().mean() if len(df_recent_trend) >= 7 else 0
 
-# --- 2行目 ---
-row2_col1, row2_col2 = st.columns(2)
-with row2_col1:
     if daily_trend > 0.01:  # 増加中 → 破滅カウントダウン
         remaining_to_doom = START_WEIGHT - weight
         doom_days = int(remaining_to_doom / daily_trend)
@@ -299,11 +292,17 @@ with row2_col1:
         </div>
         """, unsafe_allow_html=True)
 
-with row2_col2:
+with col4:
+    # 直近30日のサボり率
+    last_30 = df[df["日付"] > (today - pd.Timedelta(days=30))]
+    measured_days = last_30["体重(kg)"].notna().sum()
+    skip_days = 30 - measured_days
+    skip_rate = (skip_days / 30) * 100
+    color = "danger" if skip_rate > 30 else "warning" if skip_rate > 15 else "info"
     st.markdown(f"""
     <div class="metric-card" style="height:140px;">
         <p class="metric-label">サボり率</p>
-        <p class="metric-value {skip_color}">{skip_rate:.0f}<span style="font-size:20px">%</span></p>
+        <p class="metric-value {color}">{skip_rate:.0f}<span style="font-size:20px">%</span></p>
         <p class="metric-sub">直近30日中 {skip_days}日未測定</p>
     </div>
     """, unsafe_allow_html=True)
