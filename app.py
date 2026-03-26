@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ダークテーマCSS
+# ダークテーマCSS + レスポンシブ対応
 st.markdown("""
 <style>
     .stApp { background-color: #0E1117; }
@@ -55,6 +55,78 @@ st.markdown("""
         color: #888;
         font-size: 13px;
         margin: -8px 0 8px 0;
+    }
+
+    /* === タブレット（768px以下） === */
+    @media (max-width: 768px) {
+        /* カラムを2列に強制 */
+        [data-testid="stHorizontalBlock"] {
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+        }
+        [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+            flex: 1 1 45% !important;
+            min-width: 45% !important;
+        }
+        .metric-value {
+            font-size: 36px;
+        }
+        .metric-label {
+            font-size: 12px;
+        }
+        .metric-card {
+            padding: 14px;
+        }
+        .summary-card {
+            min-height: auto;
+        }
+        h1 { font-size: 24px !important; }
+        h3 { font-size: 18px !important; }
+    }
+
+    /* === スマホ（480px以下） === */
+    @media (max-width: 480px) {
+        /* カラムを1列に強制 */
+        [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+            flex: 1 1 100% !important;
+            min-width: 100% !important;
+        }
+        .metric-value {
+            font-size: 32px;
+        }
+        .metric-value span {
+            font-size: 16px !important;
+        }
+        .metric-label {
+            font-size: 11px;
+        }
+        .metric-sub {
+            font-size: 10px;
+        }
+        .metric-card {
+            padding: 12px;
+            margin-bottom: 4px;
+        }
+        .summary-card {
+            min-height: auto;
+            padding: 12px;
+            margin-bottom: 4px;
+        }
+        .summary-card p {
+            font-size: 12px !important;
+        }
+        .summary-card p b {
+            font-size: 14px !important;
+        }
+        h1 { font-size: 20px !important; }
+        h3 { font-size: 16px !important; }
+        .section-desc {
+            font-size: 11px;
+        }
+        /* Plotlyチャートのタッチ操作改善 */
+        .js-plotly-plot .plotly .modebar {
+            display: none !important;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -553,9 +625,9 @@ fig_weight.update_layout(
     template="plotly_dark",
     paper_bgcolor="#0E1117",
     plot_bgcolor="#0E1117",
-    height=420,
-    margin=dict(l=50, r=20, t=20, b=30),
-    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#ffffff", size=12)),
+    height=350,
+    margin=dict(l=40, r=10, t=30, b=30),
+    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#ffffff", size=11)),
     yaxis=dict(title="kg", gridcolor="#222"),
     xaxis=dict(gridcolor="#222"),
 )
@@ -614,8 +686,8 @@ with left_col:
         template="plotly_dark",
         paper_bgcolor="#0E1117",
         plot_bgcolor="#0E1117",
-        height=300,
-        margin=dict(l=50, r=20, t=20, b=30),
+        height=280,
+        margin=dict(l=40, r=10, t=20, b=30),
         yaxis=dict(title="%", gridcolor="#222"),
         xaxis=dict(gridcolor="#222"),
         showlegend=False,
