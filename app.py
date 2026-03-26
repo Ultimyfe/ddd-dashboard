@@ -598,7 +598,7 @@ else:
     df_view = df
 
 # === 体重推移グラフ ===
-st.markdown("### 体重推移")
+st.markdown("### 体重の推移")
 st.markdown("<p class='section-desc'>赤線が上がってたらアウト。緑の点線が目標。7月末までにここまで落とす。</p>", unsafe_allow_html=True)
 
 fig_weight = go.Figure()
