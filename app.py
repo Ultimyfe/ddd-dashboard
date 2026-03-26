@@ -244,7 +244,7 @@ with col2:
     <div class="metric-card" style="height:140px;">
         <p class="metric-label">リバウンド</p>
         <p class="metric-value {color}">+{rebound:.1f}<span style="font-size:20px">kg</span></p>
-        <p class="metric-sub">最低72.4kgとの差</p>
+        <p class="metric-sub">最低72.4kgからの<br>増加</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -293,7 +293,7 @@ with col4:
     <div class="metric-card" style="height:140px;">
         <p class="metric-label">サボり率</p>
         <p class="metric-value {color}">{skip_rate:.0f}<span style="font-size:20px">%</span></p>
-        <p class="metric-sub">直近30日中{skip_days}日未測定</p>
+        <p class="metric-sub">直近30日中<br>{skip_days}日未測定</p>
     </div>
     """, unsafe_allow_html=True)
 
