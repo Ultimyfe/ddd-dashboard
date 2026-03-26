@@ -262,17 +262,20 @@ skip_days = 30 - measured_days
 skip_rate = (skip_days / 30) * 100
 skip_color = "danger" if skip_rate > 30 else "warning" if skip_rate > 15 else "info"
 
+rebound_sign = "+" if rebound >= 0 else ""
+rebound_label = "増加" if rebound >= 0 else "減少"
+
 st.markdown(f"""
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
     <div class="metric-card" style="height:140px;">
         <p class="metric-label">現在の体重</p>
         <p class="metric-value neutral">{weight:.1f}<span style="font-size:20px">kg</span></p>
-        <p class="metric-sub">目標{TARGET_WEIGHT:.0f}kgまで あと{diff_to_target:.1f}kg</p>
+        <p class="metric-sub">目標体重まで<br>あと {diff_to_target:.1f}kg</p>
     </div>
     <div class="metric-card" style="height:140px;">
         <p class="metric-label">リバウンド</p>
-        <p class="metric-value {rebound_color}">+{rebound:.1f}<span style="font-size:20px">kg</span></p>
-        <p class="metric-sub">最低72.4kgからの増加</p>
+        <p class="metric-value {rebound_color}">{rebound_sign}{rebound:.1f}<span style="font-size:20px">kg</span></p>
+        <p class="metric-sub">最低{min_weight:.1f}kgからの<br>{rebound_label}</p>
     </div>
     <div class="metric-card" style="height:140px;">
         <p class="metric-label">{card3_label}</p>
@@ -280,9 +283,9 @@ st.markdown(f"""
         <p class="metric-sub">{card3_sub}</p>
     </div>
     <div class="metric-card" style="height:140px;">
-        <p class="metric-label">サボり率</p>
+        <p class="metric-label">測定サボり率</p>
         <p class="metric-value {skip_color}">{skip_rate:.0f}<span style="font-size:20px">%</span></p>
-        <p class="metric-sub">直近30日中 {skip_days}日未測定</p>
+        <p class="metric-sub">直近30日中<br>{skip_days}日未測定</p>
     </div>
 </div>
 """, unsafe_allow_html=True)
