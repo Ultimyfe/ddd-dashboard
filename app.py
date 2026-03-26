@@ -132,7 +132,11 @@ st.markdown("""
             margin-bottom: 4px;
         }
         .summary-card p {
-            font-size: 12px !important;
+            font-size: 13px !important;
+        }
+        .summary-card p[style*="font-size:36px"],
+        .summary-card p[style*="font-size:48px"] {
+            font-size: inherit !important;
         }
         .summary-card p b {
             font-size: 14px !important;
