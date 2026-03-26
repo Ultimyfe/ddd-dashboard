@@ -152,15 +152,6 @@ st.markdown("""
         .js-plotly-plot .plotly .modebar {
             display: none !important;
         }
-        /* 表示期間セレクターを3列折り返し */
-        [data-testid="stSegmentedControl"] [role="tablist"] {
-            display: flex !important;
-            flex-wrap: wrap !important;
-        }
-        [data-testid="stSegmentedControl"] [role="tablist"] button {
-            flex: 0 0 33% !important;
-            max-width: 33% !important;
-        }
     }
 </style>
 """, unsafe_allow_html=True)
