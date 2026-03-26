@@ -113,7 +113,7 @@ st.markdown("""
         .metric-value {
             font-size: 32px;
         }
-        .metric-value span {
+        .metric-card .metric-value span {
             font-size: 16px !important;
         }
         .metric-label {
