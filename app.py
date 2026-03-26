@@ -100,16 +100,6 @@ st.markdown("""
 
     /* === スマホ（480px以下） === */
     @media (max-width: 480px) {
-        /* カラムを2列に強制（2x2グリッド） */
-        [data-testid="stHorizontalBlock"] {
-            flex-wrap: wrap !important;
-            gap: 8px !important;
-        }
-        [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
-            flex: 1 1 46% !important;
-            min-width: 46% !important;
-            max-width: 49% !important;
-        }
         /* セクション間の余白 */
         .section-desc {
             margin-top: 16px !important;
@@ -255,7 +245,7 @@ with row1_col2:
     </div>
     """, unsafe_allow_html=True)
 
-st.markdown("<div style='margin-top:-12px;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='margin-top:-1rem;'></div>", unsafe_allow_html=True)
 row2_col1, row2_col2 = st.columns(2)
 
 with row2_col1:
