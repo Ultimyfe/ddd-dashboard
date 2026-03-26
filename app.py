@@ -658,34 +658,28 @@ fig_weight.update_layout(
 
 st.plotly_chart(fig_weight, use_container_width=True)
 
-# ネクストアクション（選択期間ベース）
+# ネクストアクション（選択期間の直近トレンドで判定）
 period_label = selected_period if selected_period != "全期間" else "全期間"
-df_weight_view = df_view[df_view["体重(kg)"].notna()]
-if len(df_weight_view) >= 3:
-    weight_first = df_weight_view["体重(kg)"].iloc[0]
-    weight_last = df_weight_view["体重(kg)"].iloc[-1]
-    weight_change = weight_last - weight_first
-    measured_days = df_weight_view["体重(kg)"].notna().sum()
-    total_days = (df_weight_view["日付"].iloc[-1] - df_weight_view["日付"].iloc[0]).days or 1
-    meas_rate_view = measured_days / total_days * 100
+df_ma_view = df_view[df_view["7日移動平均(kg)"].notna()]
+if len(df_ma_view) >= 14:
+    # 期間の後半1/4の移動平均トレンドで判定
+    quarter_len = max(len(df_ma_view) // 4, 7)
+    ma_recent = df_ma_view.tail(quarter_len)["7日移動平均(kg)"]
+    ma_trend = ma_recent.iloc[-1] - ma_recent.iloc[0]
+elif len(df_ma_view) >= 3:
+    ma_trend = df_ma_view["7日移動平均(kg)"].iloc[-1] - df_ma_view["7日移動平均(kg)"].iloc[0]
 else:
-    weight_change = 0
-    meas_rate_view = 0
-
-target_daily_loss = (weight - TARGET_WEIGHT) / max(days_left, 1)
+    ma_trend = 0
 
 # 優先度順に1つだけ表示
-if meas_rate_view < 50 and len(df_weight_view) >= 3:
-    action_text = f"{period_label}の測定率{meas_rate_view:.0f}%。まず毎日体重計に乗れ。"
+if ma_trend > 0.5:
+    action_text = f"{period_label}の直近トレンド: +{ma_trend:.1f}kg。増加中。食事を見直せ。"
     action_color = "#ff4444"
-elif weight_change > 0.5:
-    action_text = f"{period_label}で+{weight_change:.1f}kg。食事を見直せ。"
-    action_color = "#ff4444"
-elif weight_change > -0.3:
-    action_text = f"{period_label}で{weight_change:+.1f}kg。横ばい。運動量を上げろ。"
+elif ma_trend > -0.3:
+    action_text = f"{period_label}の直近トレンド: {ma_trend:+.1f}kg。横ばい。運動量を上げろ。"
     action_color = "#ffaa00"
 else:
-    action_text = f"{period_label}で{weight_change:.1f}kg。このペースを維持しろ。"
+    action_text = f"{period_label}の直近トレンド: {ma_trend:.1f}kg。減少中。このペースを維持しろ。"
     action_color = "#00ff88"
 
 st.markdown(
