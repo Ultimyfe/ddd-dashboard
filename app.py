@@ -322,74 +322,69 @@ mc_prob, mc_median, mc_paths = run_monte_carlo(
     df["体重(kg)"].dropna(), weight, TARGET_WEIGHT, max(days_left, 1)
 )
 
-summary_col1, summary_col2, summary_col3 = st.columns(3)
+st.markdown("<p class='section-desc'>📌 現状と推移</p>", unsafe_allow_html=True)
+# 直近30日トレンド
+df_30 = df[df["日付"] > (today - pd.Timedelta(days=30))]
+if len(df_30) >= 7:
+    trend_30 = df_30["体重(kg)"].dropna()
+    weight_change_30 = trend_30.iloc[-1] - trend_30.iloc[0] if len(trend_30) >= 2 else 0
+    trend_label = "増加中 📈" if weight_change_30 > 0.5 else "減少中 📉" if weight_change_30 < -0.5 else "横ばい ➡️"
+    trend_color = "#ff4444" if weight_change_30 > 0.5 else "#00ff88" if weight_change_30 < -0.5 else "#ffaa00"
+else:
+    weight_change_30 = 0
+    trend_label = "データ不足"
+    trend_color = "#888"
 
-with summary_col1:
-    st.markdown("<p class='section-desc'>📌 現状と推移</p>", unsafe_allow_html=True)
-    # 直近30日トレンド
-    df_30 = df[df["日付"] > (today - pd.Timedelta(days=30))]
-    if len(df_30) >= 7:
-        trend_30 = df_30["体重(kg)"].dropna()
-        weight_change_30 = trend_30.iloc[-1] - trend_30.iloc[0] if len(trend_30) >= 2 else 0
-        trend_label = "増加中 📈" if weight_change_30 > 0.5 else "減少中 📉" if weight_change_30 < -0.5 else "横ばい ➡️"
-        trend_color = "#ff4444" if weight_change_30 > 0.5 else "#00ff88" if weight_change_30 < -0.5 else "#ffaa00"
-    else:
-        weight_change_30 = 0
-        trend_label = "データ不足"
-        trend_color = "#888"
+current_fat = df[df["体脂肪率(%)"].notna()].iloc[-1]["体脂肪率(%)"] if df["体脂肪率(%)"].notna().any() else None
+fat_text = f"体脂肪率: {current_fat:.1f}% （目標{TARGET_FAT:.0f}%）" if current_fat else "体脂肪率: データなし"
 
-    current_fat = df[df["体脂肪率(%)"].notna()].iloc[-1]["体脂肪率(%)"] if df["体脂肪率(%)"].notna().any() else None
-    fat_text = f"体脂肪率: {current_fat:.1f}% （目標{TARGET_FAT:.0f}%）" if current_fat else "体脂肪率: データなし"
+st.markdown(f"""
+<div class="summary-card">
+    <p style="color:#ccc; font-size:14px; margin:0;">体重: <b style="color:#fff;">{weight:.1f}kg</b> → 目標 <b style="color:#00ff88;">{TARGET_WEIGHT:.0f}kg</b></p>
+    <p style="color:#ccc; font-size:14px; margin:4px 0;">{fat_text}</p>
+    <p style="color:#ccc; font-size:14px; margin:4px 0;">30日トレンド: <b style="color:{trend_color};">{weight_change_30:+.1f}kg（{trend_label}）</b></p>
+    <p style="color:#ccc; font-size:14px; margin:4px 0;">最低体重からのリバウンド: <b style="color:#ff4444;">+{weight - df['体重(kg)'].min():.1f}kg</b></p>
+</div>
+""", unsafe_allow_html=True)
 
+st.markdown("<p class='section-desc'>🔮 予測</p>", unsafe_allow_html=True)
+if mc_median is not None:
+    pred_color = "#00ff88" if mc_median <= TARGET_WEIGHT else "#ff4444" if mc_median > weight else "#ffaa00"
     st.markdown(f"""
     <div class="summary-card">
-        <p style="color:#ccc; font-size:14px; margin:0;">体重: <b style="color:#fff;">{weight:.1f}kg</b> → 目標 <b style="color:#00ff88;">{TARGET_WEIGHT:.0f}kg</b></p>
-        <p style="color:#ccc; font-size:14px; margin:4px 0;">{fat_text}</p>
-        <p style="color:#ccc; font-size:14px; margin:4px 0;">30日トレンド: <b style="color:{trend_color};">{weight_change_30:+.1f}kg（{trend_label}）</b></p>
-        <p style="color:#ccc; font-size:14px; margin:4px 0;">最低体重からのリバウンド: <b style="color:#ff4444;">+{weight - df['体重(kg)'].min():.1f}kg</b></p>
+        <p style="color:#ccc; font-size:14px; margin:0;">今のペースが続いた場合</p>
+        <p style="color:#ccc; font-size:14px; margin:4px 0;">{TARGET_DATE.strftime('%Y/%m/%d')}時点の予測体重:</p>
+        <p style="color:{pred_color}; font-size:36px; font-weight:bold; margin:8px 0;">{mc_median:.1f}<span style="font-size:16px;">kg</span></p>
+        <p style="color:#888; font-size:11px; margin:0;">過去の変動パターンから5,000回シミュレーション</p>
+    </div>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+    <div class="summary-card">
+        <p style="color:#888;">予測に必要なデータが不足しています。14日以上の測定が必要です。</p>
     </div>
     """, unsafe_allow_html=True)
 
-with summary_col2:
-    st.markdown("<p class='section-desc'>🔮 予測</p>", unsafe_allow_html=True)
-    if mc_median is not None:
-        pred_color = "#00ff88" if mc_median <= TARGET_WEIGHT else "#ff4444" if mc_median > weight else "#ffaa00"
-        st.markdown(f"""
-        <div class="summary-card">
-            <p style="color:#ccc; font-size:14px; margin:0;">今のペースが続いた場合</p>
-            <p style="color:#ccc; font-size:14px; margin:4px 0;">{TARGET_DATE.strftime('%Y/%m/%d')}時点の予測体重:</p>
-            <p style="color:{pred_color}; font-size:36px; font-weight:bold; margin:8px 0;">{mc_median:.1f}<span style="font-size:16px;">kg</span></p>
-            <p style="color:#888; font-size:11px; margin:0;">過去の変動パターンから5,000回シミュレーション</p>
+st.markdown("<p class='section-desc'>🎯 目標達成確率</p>", unsafe_allow_html=True)
+if mc_prob is not None:
+    prob_color = "#00ff88" if mc_prob >= 50 else "#ffaa00" if mc_prob >= 20 else "#ff4444"
+    bar_width = max(mc_prob, 2)
+    st.markdown(f"""
+    <div class="summary-card">
+        <p style="color:#ccc; font-size:14px; margin:0;">{TARGET_DATE.strftime('%Y/%m/%d')}までに{TARGET_WEIGHT:.0f}kg達成</p>
+        <p style="color:{prob_color}; font-size:48px; font-weight:bold; margin:8px 0;">{mc_prob:.1f}<span style="font-size:20px;">%</span></p>
+        <div style="background:#333; border-radius:4px; height:8px; margin:8px 0;">
+            <div style="background:{prob_color}; border-radius:4px; height:8px; width:{bar_width}%;"></div>
         </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown("""
-        <div class="summary-card">
-            <p style="color:#888;">予測に必要なデータが不足しています。14日以上の測定が必要です。</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-with summary_col3:
-    st.markdown("<p class='section-desc'>🎯 目標達成確率</p>", unsafe_allow_html=True)
-    if mc_prob is not None:
-        prob_color = "#00ff88" if mc_prob >= 50 else "#ffaa00" if mc_prob >= 20 else "#ff4444"
-        bar_width = max(mc_prob, 2)
-        st.markdown(f"""
-        <div class="summary-card">
-            <p style="color:#ccc; font-size:14px; margin:0;">{TARGET_DATE.strftime('%Y/%m/%d')}までに{TARGET_WEIGHT:.0f}kg達成</p>
-            <p style="color:{prob_color}; font-size:48px; font-weight:bold; margin:8px 0;">{mc_prob:.1f}<span style="font-size:20px;">%</span></p>
-            <div style="background:#333; border-radius:4px; height:8px; margin:8px 0;">
-                <div style="background:{prob_color}; border-radius:4px; height:8px; width:{bar_width}%;"></div>
-            </div>
-            <p style="color:#888; font-size:11px; margin:0;">{"今のままでは厳しい。行動を変えろ。" if mc_prob < 20 else "可能性はある。ペースを上げろ。" if mc_prob < 50 else "いいペース。維持しろ。"}</p>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown("""
-        <div class="summary-card">
-            <p style="color:#888;">確率算出に必要なデータが不足しています。</p>
-        </div>
-        """, unsafe_allow_html=True)
+        <p style="color:#888; font-size:11px; margin:0;">{"今のままでは厳しい。行動を変えろ。" if mc_prob < 20 else "可能性はある。ペースを上げろ。" if mc_prob < 50 else "いいペース。維持しろ。"}</p>
+    </div>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+    <div class="summary-card">
+        <p style="color:#888;">確率算出に必要なデータが不足しています。</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 # --- 目標達成に必要なアクション ---
 st.markdown("<div style='margin-top:24px;'></div>", unsafe_allow_html=True)
