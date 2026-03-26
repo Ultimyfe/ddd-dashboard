@@ -171,6 +171,8 @@ def load_data():
     df["日付"] = pd.to_datetime(df["日付"])
     # 計算列を追加
     df["7日移動平均(kg)"] = df["体重(kg)"].rolling(7, min_periods=1).mean()
+    df["7日移動平均_体脂肪率(%)"] = df["体脂肪率(%)"].rolling(7, min_periods=1).mean()
+    df["7日移動平均_基礎代謝(kcal)"] = df["基礎代謝(kcal)"].rolling(7, min_periods=1).mean()
     min_weight = df["体重(kg)"].expanding().min()
     df["最低体重からの差分(kg)"] = df["体重(kg)"] - min_weight
     return df
@@ -720,15 +722,16 @@ with left_col:
     )
     st.plotly_chart(fig_fat, use_container_width=True)
 
-    # 体脂肪率 FEEDBACK（選択期間の直近トレンドで判定）
+    # 体脂肪率 FEEDBACK（選択期間の後半1/4の7日移動平均で判定）
     current_fat = df[df["体脂肪率(%)"].notna()].iloc[-1]["体脂肪率(%)"]
     fat_to_goal = current_fat - TARGET_FAT
-    if len(df_fat) >= 14:
-        quarter_len = max(len(df_fat) // 4, 7)
-        fat_recent = df_fat.tail(quarter_len)["体脂肪率(%)"]
+    df_fat_ma = df_view[df_view["7日移動平均_体脂肪率(%)"].notna()]
+    if len(df_fat_ma) >= 14:
+        quarter_len = max(len(df_fat_ma) // 4, 7)
+        fat_recent = df_fat_ma.tail(quarter_len)["7日移動平均_体脂肪率(%)"]
         fat_trend = fat_recent.iloc[-1] - fat_recent.iloc[0]
-    elif len(df_fat) >= 3:
-        fat_trend = df_fat["体脂肪率(%)"].iloc[-1] - df_fat["体脂肪率(%)"].iloc[0]
+    elif len(df_fat_ma) >= 3:
+        fat_trend = df_fat_ma["7日移動平均_体脂肪率(%)"].iloc[-1] - df_fat_ma["7日移動平均_体脂肪率(%)"].iloc[0]
     else:
         fat_trend = None
 
@@ -778,14 +781,15 @@ with right_col:
         )
         st.plotly_chart(fig_bmr, use_container_width=True)
 
-        # 基礎代謝 FEEDBACK（選択期間の直近トレンドで判定）
+        # 基礎代謝 FEEDBACK（選択期間の後半1/4の7日移動平均で判定）
         current_bmr = df_bmr["基礎代謝(kcal)"].iloc[-1]
-        if len(df_bmr) >= 14:
-            quarter_len = max(len(df_bmr) // 4, 7)
-            bmr_recent = df_bmr.tail(quarter_len)["基礎代謝(kcal)"]
+        df_bmr_ma = df_view[df_view["7日移動平均_基礎代謝(kcal)"].notna()]
+        if len(df_bmr_ma) >= 14:
+            quarter_len = max(len(df_bmr_ma) // 4, 7)
+            bmr_recent = df_bmr_ma.tail(quarter_len)["7日移動平均_基礎代謝(kcal)"]
             bmr_trend = bmr_recent.iloc[-1] - bmr_recent.iloc[0]
-        elif len(df_bmr) >= 3:
-            bmr_trend = df_bmr["基礎代謝(kcal)"].iloc[-1] - df_bmr["基礎代謝(kcal)"].iloc[0]
+        elif len(df_bmr_ma) >= 3:
+            bmr_trend = df_bmr_ma["7日移動平均_基礎代謝(kcal)"].iloc[-1] - df_bmr_ma["7日移動平均_基礎代謝(kcal)"].iloc[0]
         else:
             bmr_trend = None
 
