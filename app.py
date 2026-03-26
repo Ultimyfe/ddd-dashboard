@@ -377,7 +377,7 @@ with summary_col1:
     """, unsafe_allow_html=True)
 
 with summary_col2:
-    st.markdown("<p class='section-desc'>🔮 予測（モンテカルロ法）</p>", unsafe_allow_html=True)
+    st.markdown("<p class='section-desc'>🔮 予測</p>", unsafe_allow_html=True)
     if mc_median is not None:
         pred_color = "#00ff88" if mc_median <= TARGET_WEIGHT else "#ff4444" if mc_median > weight else "#ffaa00"
         st.markdown(f"""
