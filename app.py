@@ -275,7 +275,7 @@ st.markdown(f"""
     <div class="metric-card" style="height:140px;">
         <p class="metric-label">リバウンド</p>
         <p class="metric-value {rebound_color}">{rebound_sign}{rebound:.1f}<span style="font-size:20px">kg</span></p>
-        <p class="metric-sub">最低{min_weight:.1f}kgからの<br>{rebound_label}</p>
+        <p class="metric-sub">最低{df['体重(kg)'].min():.1f}kgからの<br>{rebound_label}</p>
     </div>
     <div class="metric-card" style="height:140px;">
         <p class="metric-label">{card3_label}</p>
