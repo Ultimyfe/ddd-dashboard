@@ -231,9 +231,9 @@ st.markdown("# 📊 DataDrivenDiet")
 st.markdown(f"<p style='color:#666; font-size:12px;'>最終更新: {today.strftime('%Y/%m/%d')} | データ: {len(df)}日分 | 目標: {TARGET_DATE.strftime('%Y/%m/%d')}まで（残り{days_left}日）</p>", unsafe_allow_html=True)
 
 # === スコアカード行 ===
-col1, col2, col3, col4 = st.columns(4)
+row1_col1, row1_col2 = st.columns(2)
 
-with col1:
+with row1_col1:
     weight = latest["体重(kg)"]
     diff_to_target = weight - TARGET_WEIGHT
     st.markdown(f"""
@@ -244,7 +244,7 @@ with col1:
     </div>
     """, unsafe_allow_html=True)
 
-with col2:
+with row1_col2:
     rebound = latest["最低体重からの差分(kg)"]
     color = "danger" if rebound > 10 else "warning" if rebound > 5 else "info"
     st.markdown(f"""
@@ -255,7 +255,10 @@ with col2:
     </div>
     """, unsafe_allow_html=True)
 
-with col3:
+st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+row2_col1, row2_col2 = st.columns(2)
+
+with row2_col1:
     # 直近30日のトレンドから破滅日数を計算
     START_WEIGHT = 105.7
     df_recent_trend = df[df["日付"] > (today - pd.Timedelta(days=30))]
@@ -292,7 +295,7 @@ with col3:
         </div>
         """, unsafe_allow_html=True)
 
-with col4:
+with row2_col2:
     # 直近30日のサボり率
     last_30 = df[df["日付"] > (today - pd.Timedelta(days=30))]
     measured_days = last_30["体重(kg)"].notna().sum()
