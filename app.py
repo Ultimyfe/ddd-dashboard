@@ -717,23 +717,22 @@ with left_col:
     )
     st.plotly_chart(fig_fat, use_container_width=True)
 
-    # 体脂肪率 FEEDBACK
-    if len(df_fat) >= 7:
-        fat_recent = df_fat.tail(7)["体脂肪率(%)"]
-        fat_trend = fat_recent.diff().mean()
-        current_fat = df[df["体脂肪率(%)"].notna()].iloc[-1]["体脂肪率(%)"]
-        fat_to_goal = current_fat - TARGET_FAT
-        if fat_trend > 0.05:
-            fb_fat_text = "体脂肪率が増加中。脂質の摂りすぎか有酸素不足。"
+    # 体脂肪率 FEEDBACK（直近30日の実測データで判定）
+    df_fat_30 = df[(df["日付"] > (today - pd.Timedelta(days=30))) & (df["体脂肪率(%)"].notna())]
+    current_fat = df[df["体脂肪率(%)"].notna()].iloc[-1]["体脂肪率(%)"]
+    fat_to_goal = current_fat - TARGET_FAT
+    if len(df_fat_30) >= 3:
+        fat_first = df_fat_30["体脂肪率(%)"].iloc[0]
+        fat_last = df_fat_30["体脂肪率(%)"].iloc[-1]
+        fat_change = fat_last - fat_first
+        if fat_change > 0.5:
+            fb_fat_text = f"30日で+{fat_change:.1f}%。体脂肪率が増加中。"
             fb_fat_color = "#ff4444"
-        elif fat_to_goal > 15:
-            fb_fat_text = f"目標まで-{fat_to_goal:.1f}%。まずは20%台を目指せ。"
-            fb_fat_color = "#ffaa00"
-        elif fat_trend < -0.03:
-            fb_fat_text = "減少中。脂肪が落ちてる。続けろ。"
+        elif fat_change < -0.5:
+            fb_fat_text = f"30日で{fat_change:.1f}%。減少中。続けろ。"
             fb_fat_color = "#00ff88"
         else:
-            fb_fat_text = f"横ばい。目標{TARGET_FAT:.0f}%まであと{fat_to_goal:.1f}%。有酸素を増やせ。"
+            fb_fat_text = f"横ばい。目標{TARGET_FAT:.0f}%まであと{fat_to_goal:.1f}%。"
             fb_fat_color = "#ffaa00"
     else:
         fb_fat_text = "データ不足。まず毎日測れ。"
