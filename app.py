@@ -244,7 +244,7 @@ with col2:
     <div class="metric-card" style="height:140px;">
         <p class="metric-label">リバウンド</p>
         <p class="metric-value {color}">+{rebound:.1f}<span style="font-size:20px">kg</span></p>
-        <p class="metric-sub">最低72.4kgからの増加</p>
+        <p class="metric-sub">最低72.4kgとの差</p>
     </div>
     """, unsafe_allow_html=True)
 
