@@ -21,6 +21,10 @@ st.markdown("""
         border-radius: 8px;
         padding: 20px;
         text-align: center;
+        min-height: 160px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
     .summary-card {
         background: #1a1a2e;
