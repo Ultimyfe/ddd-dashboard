@@ -255,7 +255,7 @@ with row1_col2:
     </div>
     """, unsafe_allow_html=True)
 
-st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='margin-top:-12px;'></div>", unsafe_allow_html=True)
 row2_col1, row2_col2 = st.columns(2)
 
 with row2_col1:
