@@ -71,8 +71,8 @@ st.markdown("""
         margin: -8px 0 8px 0;
     }
 
-    /* === タブレット（768px以下） === */
-    @media (max-width: 768px) {
+    /* === タブレット（900px以下：iPad縦向き含む） === */
+    @media (max-width: 900px) {
         /* カラムを2列に強制 */
         [data-testid="stHorizontalBlock"] {
             flex-wrap: wrap !important;
