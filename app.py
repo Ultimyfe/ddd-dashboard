@@ -230,7 +230,7 @@ with col1:
     weight = latest["体重(kg)"]
     diff_to_target = weight - TARGET_WEIGHT
     st.markdown(f"""
-    <div class="metric-card">
+    <div class="metric-card" style="height:140px;">
         <p class="metric-label">現在の体重</p>
         <p class="metric-value neutral">{weight:.1f}<span style="font-size:20px">kg</span></p>
         <p class="metric-sub">目標{TARGET_WEIGHT:.0f}kgまで あと{diff_to_target:.1f}kg</p>
@@ -241,7 +241,7 @@ with col2:
     rebound = latest["最低体重からの差分(kg)"]
     color = "danger" if rebound > 10 else "warning" if rebound > 5 else "info"
     st.markdown(f"""
-    <div class="metric-card">
+    <div class="metric-card" style="height:140px;">
         <p class="metric-label">最低体重からのリバウンド</p>
         <p class="metric-value {color}">+{rebound:.1f}<span style="font-size:20px">kg</span></p>
         <p class="metric-sub">72.4kgからどれだけ戻ったか</p>
@@ -259,7 +259,7 @@ with col3:
         doom_days = int(remaining_to_doom / daily_trend)
         color = "danger" if doom_days < 365 else "warning" if doom_days < 1000 else "info"
         st.markdown(f"""
-        <div class="metric-card">
+        <div class="metric-card" style="height:140px;">
             <p class="metric-label">このペースで太り続けると</p>
             <p class="metric-value {color}">{doom_days}<span style="font-size:20px">日で元通り</span></p>
             <p class="metric-sub">105.7kgに逆戻りする日数</p>
@@ -267,7 +267,7 @@ with col3:
         """, unsafe_allow_html=True)
     elif daily_trend < -0.01:  # 減少中
         st.markdown(f"""
-        <div class="metric-card">
+        <div class="metric-card" style="height:140px;">
             <p class="metric-label">直近30日のトレンド</p>
             <p class="metric-value info">減少中 📉</p>
             <p class="metric-sub">油断するな。</p>
@@ -275,7 +275,7 @@ with col3:
         """, unsafe_allow_html=True)
     else:  # 横ばい
         st.markdown(f"""
-        <div class="metric-card">
+        <div class="metric-card" style="height:140px;">
             <p class="metric-label">直近30日のトレンド</p>
             <p class="metric-value warning">横ばい ➡️</p>
             <p class="metric-sub">変化なし。行動を変えろ。</p>
@@ -290,7 +290,7 @@ with col4:
     skip_rate = (skip_days / 30) * 100
     color = "danger" if skip_rate > 30 else "warning" if skip_rate > 15 else "info"
     st.markdown(f"""
-    <div class="metric-card">
+    <div class="metric-card" style="height:140px;">
         <p class="metric-label">直近30日のサボり率</p>
         <p class="metric-value {color}">{skip_rate:.0f}<span style="font-size:20px">%</span></p>
         <p class="metric-sub">30日中{skip_days}日 体重計に乗れず</p>
