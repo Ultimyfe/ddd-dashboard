@@ -134,8 +134,11 @@ st.markdown("""
         .summary-card p {
             font-size: 13px !important;
         }
-        .summary-card p span {
-            font-size: 11px !important;
+        .summary-card .summary-number {
+            font-size: 24px !important;
+        }
+        .summary-card .summary-number span {
+            font-size: 14px !important;
         }
         .summary-card p b {
             font-size: 14px !important;
