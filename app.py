@@ -225,12 +225,27 @@ days_left = (TARGET_DATE - today).days
 st.markdown("# 📊 DataDrivenDiet")
 st.markdown(f"<p style='color:#666; font-size:12px;'>最終更新: {today.strftime('%Y/%m/%d')} | データ: {len(df)}日分 | 目標: {TARGET_DATE.strftime('%Y/%m/%d')}まで（残り{days_left}日）</p>", unsafe_allow_html=True)
 
-# === スコアカード行 ===
-col1, col2, col3, col4 = st.columns(4)
+# === スコアカード（2行×2列） ===
+weight = latest["体重(kg)"]
+diff_to_target = weight - TARGET_WEIGHT
+rebound = latest["最低体重からの差分(kg)"]
+rebound_color = "danger" if rebound > 10 else "warning" if rebound > 5 else "info"
 
-with col1:
-    weight = latest["体重(kg)"]
-    diff_to_target = weight - TARGET_WEIGHT
+# 破滅/最低体重到達の計算
+START_WEIGHT = 105.7
+df_recent_trend = df[df["日付"] > (today - pd.Timedelta(days=30))]
+daily_trend = df_recent_trend["体重(kg)"].dropna().diff().mean() if len(df_recent_trend) >= 7 else 0
+
+# サボり率の計算
+last_30 = df[df["日付"] > (today - pd.Timedelta(days=30))]
+measured_days = last_30["体重(kg)"].notna().sum()
+skip_days = 30 - measured_days
+skip_rate = (skip_days / 30) * 100
+skip_color = "danger" if skip_rate > 30 else "warning" if skip_rate > 15 else "info"
+
+# --- 1行目 ---
+row1_col1, row1_col2 = st.columns(2)
+with row1_col1:
     st.markdown(f"""
     <div class="metric-card" style="height:140px;">
         <p class="metric-label">現在の体重</p>
@@ -239,28 +254,20 @@ with col1:
     </div>
     """, unsafe_allow_html=True)
 
-with col2:
-    rebound = latest["最低体重からの差分(kg)"]
-    color = "danger" if rebound > 10 else "warning" if rebound > 5 else "info"
+with row1_col2:
     st.markdown(f"""
     <div class="metric-card" style="height:140px;">
         <p class="metric-label">リバウンド</p>
-        <p class="metric-value {color}">+{rebound:.1f}<span style="font-size:20px">kg</span></p>
-        <p class="metric-sub">最低72.4kgからの<br>増加</p>
+        <p class="metric-value {rebound_color}">+{rebound:.1f}<span style="font-size:20px">kg</span></p>
+        <p class="metric-sub">最低72.4kgからの増加</p>
     </div>
     """, unsafe_allow_html=True)
 
-with col3:
-    # 直近30日のトレンドから破滅日数を計算
-    START_WEIGHT = 105.7  # 過去最高体重
-    df_recent_trend = df[df["日付"] > (today - pd.Timedelta(days=30))]
-    daily_trend = df_recent_trend["体重(kg)"].dropna().diff().mean() if len(df_recent_trend) >= 7 else 0
+st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
 
-    # 直近7日の移動平均トレンドで判定
-    df_ma_recent = df[df["日付"] > (today - pd.Timedelta(days=7))]
-    ma_vals = df_ma_recent["7日移動平均(kg)"].dropna()
-    weekly_trend = (ma_vals.iloc[-1] - ma_vals.iloc[0]) if len(ma_vals) >= 2 else daily_trend * 7
-
+# --- 2行目 ---
+row2_col1, row2_col2 = st.columns(2)
+with row2_col1:
     if daily_trend > 0.01:  # 増加中 → 破滅カウントダウン
         remaining_to_doom = START_WEIGHT - weight
         doom_days = int(remaining_to_doom / daily_trend)
@@ -272,7 +279,7 @@ with col3:
             <p class="metric-sub">105.7kgに届くまで</p>
         </div>
         """, unsafe_allow_html=True)
-    elif daily_trend < -0.01:  # 減少中 → 最低体重到達カウントダウン
+    elif daily_trend < -0.01:  # 減少中 → 最低体重到達
         remaining_to_min = weight - min_weight
         days_to_min = int(remaining_to_min / abs(daily_trend))
         color = "info" if days_to_min < 90 else "warning" if days_to_min < 180 else "neutral"
@@ -292,18 +299,12 @@ with col3:
         </div>
         """, unsafe_allow_html=True)
 
-with col4:
-    # 直近30日のサボり率
-    last_30 = df[df["日付"] > (today - pd.Timedelta(days=30))]
-    measured_days = last_30["体重(kg)"].notna().sum()
-    skip_days = 30 - measured_days
-    skip_rate = (skip_days / 30) * 100
-    color = "danger" if skip_rate > 30 else "warning" if skip_rate > 15 else "info"
+with row2_col2:
     st.markdown(f"""
     <div class="metric-card" style="height:140px;">
         <p class="metric-label">サボり率</p>
-        <p class="metric-value {color}">{skip_rate:.0f}<span style="font-size:20px">%</span></p>
-        <p class="metric-sub">直近30日中<br>{skip_days}日未測定</p>
+        <p class="metric-value {skip_color}">{skip_rate:.0f}<span style="font-size:20px">%</span></p>
+        <p class="metric-sub">直近30日中 {skip_days}日未測定</p>
     </div>
     """, unsafe_allow_html=True)
 
