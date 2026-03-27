@@ -1038,28 +1038,17 @@ with tab_training:
                 "has_alert": actual_1rm is not None and estimated_1rm is not None and estimated_1rm > actual_1rm,
             })
 
-        # BIG3テーブル（divベース - Streamlitのtableタグ制限回避）
-        table_html = """
-        <div style="background:#1a1a2e; border-radius:8px; padding:12px; border:1px solid #333;">
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:4px; text-align:center; margin-bottom:8px;">
-                <span style="color:#888; font-size:11px; text-align:left;">種目</span>
-                <span style="color:#888; font-size:11px;">実測1RM</span>
-                <span style="color:#888; font-size:11px;">推奨重量</span>
-                <span style="color:#888; font-size:11px;">推定1RM</span>
-            </div>
-        """
+        # BIG3テーブル（Streamlit native）
         for row in big3_rows:
             est_color = "#ff4444" if row["has_alert"] else "#ccc"
-            table_html += f"""
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:4px; text-align:center; padding:10px 0; border-top:1px solid #222;">
-                <span style="color:#fff; font-weight:bold; text-align:left; font-size:14px;">{row['種目']}</span>
-                <span style="color:#ccc; font-size:14px;">{row['actual_1rm']}<br><span style="color:#555; font-size:10px;">{row['actual_date']}</span></span>
-                <span style="color:#00ff88; font-size:14px;">{row['rec_weight']}<br><span style="color:#555; font-size:10px;">×{row['reps']}rep</span></span>
-                <span style="color:{est_color}; font-size:14px;">{row['estimated_1rm']}</span>
-            </div>
-            """
-        table_html += '</div>'
-        st.markdown(table_html, unsafe_allow_html=True)
+            st.markdown(f"""
+<div class="metric-card" style="height:auto; padding:14px 16px; margin-bottom:8px;">
+<p style="color:#fff; font-size:16px; font-weight:bold; margin:0 0 8px 0;">{row['種目']}</p>
+<p style="color:#888; font-size:11px; margin:0;">実測1RM: <b style="color:#ccc; font-size:14px;">{row['actual_1rm']}</b> <span style="color:#555;">({row['actual_date']})</span></p>
+<p style="color:#888; font-size:11px; margin:4px 0;">推奨: <b style="color:#00ff88; font-size:14px;">{row['rec_weight']}</b> <span style="color:#555;">×{row['reps']}rep</span></p>
+<p style="color:#888; font-size:11px; margin:4px 0;">推定1RM: <b style="color:{est_color}; font-size:14px;">{row['estimated_1rm']}</b></p>
+</div>
+""", unsafe_allow_html=True)
 
         # アラート表示
         for alert in alerts:
@@ -1109,8 +1098,8 @@ with tab_training:
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#ffffff", size=11)),
             xaxis=dict(gridcolor="#222"),
         )
-        fig_dual.update_yaxes(title_text="体重(kg)", titlefont=dict(color="#ff4444"), tickfont=dict(color="#ff4444"), gridcolor="#222", secondary_y=False)
-        fig_dual.update_yaxes(title_text="ボリューム(kg)", titlefont=dict(color="#4488ff"), tickfont=dict(color="#4488ff"), gridcolor="rgba(0,0,0,0)", secondary_y=True)
+        fig_dual.update_yaxes(title_text="体重(kg)", title_font_color="#ff4444", tickfont_color="#ff4444", gridcolor="#222", secondary_y=False)
+        fig_dual.update_yaxes(title_text="ボリューム(kg)", title_font_color="#4488ff", tickfont_color="#4488ff", gridcolor="rgba(0,0,0,0)", secondary_y=True)
 
         st.plotly_chart(fig_dual, use_container_width=True)
 
