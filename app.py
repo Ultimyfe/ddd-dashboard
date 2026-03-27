@@ -1004,12 +1004,16 @@ with tab_training:
 
                 st.markdown("<p style='color:#888; font-size:12px;'>各種目のセットごとに重量とrep数を入力。前回値がデフォルトで入っています。</p>", unsafe_allow_html=True)
 
+                # ヘッダーラベル
+                header_cols = st.columns([2, 1, 2, 1, 2, 1])
+                for i, label in enumerate(["Set1 kg", "rep", "Set2 kg", "rep", "Set3 kg", "rep"]):
+                    header_cols[i].markdown(f"<p style='color:#555; font-size:10px; text-align:center; margin:0;'>{label}</p>", unsafe_allow_html=True)
+
                 form_data = {}
                 for ex_name, default_reps in EXERCISES:
                     prev = last_data.get(ex_name, {})
                     prev_weights = prev.get("重量", [0, 0, 0])
                     prev_reps = prev.get("reps", [default_reps] * 3)
-                    # 前回値がない場合のフォールバック
                     while len(prev_weights) < 3:
                         prev_weights.append(prev_weights[-1] if prev_weights else 0)
                     while len(prev_reps) < 3:
@@ -1029,11 +1033,6 @@ with tab_training:
                         )
                         sets.append((w, r))
                     form_data[ex_name] = sets
-                    # ヘッダーラベル（最初の種目のみ表示）
-                    if ex_name == EXERCISES[0][0]:
-                        header_cols = st.columns([2, 1, 2, 1, 2, 1])
-                        for i, label in enumerate(["Set1 kg", "rep", "Set2 kg", "rep", "Set3 kg", "rep"]):
-                            header_cols[i].markdown(f"<p style='color:#555; font-size:10px; text-align:center;'>{label}</p>", unsafe_allow_html=True)
 
                 submitted = st.form_submit_button("💾 記録を保存", use_container_width=True)
 
