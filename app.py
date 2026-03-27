@@ -71,7 +71,7 @@ st.markdown("""
     .section-desc {
         color: #888;
         font-size: 13px;
-        margin: 16px 0 4px 0;
+        margin: 24px 0 2px 0 !important;
     }
 
     /* BIG3テーブル */
@@ -148,7 +148,7 @@ st.markdown("""
     @media (max-width: 480px) {
         /* セクション間の余白 */
         .section-desc {
-            margin-top: 16px !important;
+            margin: 20px 0 2px 0 !important;
         }
         .summary-card {
             margin-bottom: 8px;
@@ -193,6 +193,7 @@ st.markdown("""
         h3 { font-size: 16px !important; }
         .section-desc {
             font-size: 11px;
+            margin: 20px 0 2px 0 !important;
         }
         /* Plotlyチャートのタッチ操作改善 */
         .js-plotly-plot .plotly .modebar {
