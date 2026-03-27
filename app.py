@@ -1004,11 +1004,6 @@ with tab_training:
 
                 st.markdown("<p style='color:#888; font-size:12px;'>各種目のセットごとに重量とrep数を入力。前回値がデフォルトで入っています。</p>", unsafe_allow_html=True)
 
-                # ヘッダーラベル
-                header_cols = st.columns([2, 1, 2, 1, 2, 1])
-                for i, label in enumerate(["Set1 kg", "rep", "Set2 kg", "rep", "Set3 kg", "rep"]):
-                    header_cols[i].markdown(f"<p style='color:#555; font-size:10px; text-align:center; margin:0;'>{label}</p>", unsafe_allow_html=True)
-
                 form_data = {}
                 for ex_name, default_reps in EXERCISES:
                     prev = last_data.get(ex_name, {})
@@ -1020,14 +1015,15 @@ with tab_training:
                         prev_reps.append(default_reps)
 
                     st.markdown(f"**{ex_name}**")
-                    cols = st.columns([2, 1, 2, 1, 2, 1])
                     sets = []
                     for s in range(3):
-                        w = cols[s * 2].number_input(
-                            f"重量", value=float(prev_weights[s]), step=2.5, min_value=0.0,
+                        cols = st.columns([1, 3, 2])
+                        cols[0].markdown(f"<p style='color:#555; font-size:12px; line-height:40px; margin:0;'>S{s+1}</p>", unsafe_allow_html=True)
+                        w = cols[1].number_input(
+                            f"kg", value=float(prev_weights[s]), step=2.5, min_value=0.0,
                             key=f"{ex_name}_w{s}", label_visibility="collapsed"
                         )
-                        r = cols[s * 2 + 1].number_input(
+                        r = cols[2].number_input(
                             f"rep", value=int(prev_reps[s]), step=1, min_value=0,
                             key=f"{ex_name}_r{s}", label_visibility="collapsed"
                         )
