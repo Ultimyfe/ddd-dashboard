@@ -1229,7 +1229,7 @@ with tab_training:
         st.markdown("<div style='margin-top:24px;'></div>", unsafe_allow_html=True)
 
         # === 期間切り替え ===
-        t_period_options = {"全期間": None, "1年": 365, "半年": 180, "3ヶ月": 90, "1ヶ月": 30, "1週間": 7}
+        t_period_options = {"全期間": None, "1年": 365, "半年": 180, "3ヶ月": 90, "1ヶ月": 30, "2週間": 14}
         t_selected_period = st.segmented_control("表示期間 ", options=list(t_period_options.keys()), default="全期間")
         t_period_days = t_period_options[t_selected_period]
 
