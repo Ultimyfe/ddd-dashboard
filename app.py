@@ -1017,15 +1017,14 @@ with tab_training:
                     st.markdown(f"**{ex_name}**")
                     sets = []
                     for s in range(3):
-                        cols = st.columns([1, 2, 2])
-                        cols[0].markdown(f"<p style='color:#555; font-size:12px; line-height:40px; margin:0;'>S{s+1}</p>", unsafe_allow_html=True)
-                        w = cols[1].number_input(
-                            f"kg", value=float(prev_weights[s]), step=2.5, min_value=0.0,
-                            key=f"{ex_name}_w{s}", label_visibility="collapsed"
+                        c1, c2 = st.columns(2)
+                        w = c1.number_input(
+                            f"S{s+1} kg", value=float(prev_weights[s]), step=2.5, min_value=0.0,
+                            key=f"{ex_name}_w{s}"
                         )
-                        r = cols[2].number_input(
-                            f"rep", value=int(prev_reps[s]), step=1, min_value=0,
-                            key=f"{ex_name}_r{s}", label_visibility="collapsed"
+                        r = c2.number_input(
+                            f"S{s+1} rep", value=int(prev_reps[s]), step=1, min_value=0,
+                            key=f"{ex_name}_r{s}"
                         )
                         sets.append((w, r))
                     form_data[ex_name] = sets
