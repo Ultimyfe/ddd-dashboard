@@ -233,8 +233,16 @@ rebound = latest["最低体重からの差分(kg)"]
 rebound_color = "danger" if rebound > 10 else "warning" if rebound > 5 else "info"
 
 START_WEIGHT = 105.7
+# 直近30日の7日移動平均に対して線形回帰でトレンド算出（日次diff().mean()より安定）
+_trend_col = "7日移動平均(kg)"
 df_recent_trend = df[df["日付"] > (today - pd.Timedelta(days=30))]
-daily_trend = df_recent_trend["体重(kg)"].dropna().diff().mean() if len(df_recent_trend) >= 7 else 0
+df_trend_valid = df_recent_trend[df_recent_trend[_trend_col].notna()]
+if len(df_trend_valid) >= 7:
+    _x = (df_trend_valid["日付"] - df_trend_valid["日付"].iloc[0]).dt.days.values.astype(float)
+    _y = df_trend_valid[_trend_col].values
+    daily_trend = np.polyfit(_x, _y, 1)[0]  # 傾き（kg/日）
+else:
+    daily_trend = 0
 
 if daily_trend > 0.01:
     remaining_to_doom = START_WEIGHT - weight
