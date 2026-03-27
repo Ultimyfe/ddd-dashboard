@@ -71,7 +71,7 @@ st.markdown("""
     .section-desc {
         color: #888;
         font-size: 13px;
-        margin: -8px 0 8px 0;
+        margin: 16px 0 4px 0;
     }
 
     /* BIG3テーブル */
