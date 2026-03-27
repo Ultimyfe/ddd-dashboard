@@ -4,6 +4,8 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
+import gspread
+from google.oauth2.service_account import Credentials
 
 st.set_page_config(
     page_title="DDD - 危機感ダッシュボード",
@@ -265,6 +267,41 @@ def load_1rm_records():
         return df
     except Exception:
         return pd.DataFrame(columns=["日付", "種目", "1RM(kg)"])
+
+# === gspread書き込み ===
+def get_gspread_client():
+    """Streamlit secretsからサービスアカウント認証してgspreadクライアントを取得"""
+    try:
+        scopes = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive",
+        ]
+        creds = Credentials.from_service_account_info(
+            st.secrets["gcp_service_account"], scopes=scopes
+        )
+        return gspread.authorize(creds)
+    except Exception:
+        return None
+
+def append_training_rows(rows):
+    """トレーニングログをスプシに追記。rowsは[[日付, 種目, 重量, 回数, セット番号, 消費kcal, メモ], ...]"""
+    gc = get_gspread_client()
+    if gc is None:
+        return False
+    sh = gc.open_by_key(SPREADSHEET_ID)
+    ws = sh.worksheet("トレーニング")
+    ws.append_rows(rows, value_input_option="USER_ENTERED")
+    return True
+
+def append_1rm_rows(rows):
+    """1RM記録をスプシに追記。rowsは[[日付, 種目, 1RM(kg)], ...]"""
+    gc = get_gspread_client()
+    if gc is None:
+        return False
+    sh = gc.open_by_key(SPREADSHEET_ID)
+    ws = sh.worksheet("1RM記録")
+    ws.append_rows(rows, value_input_option="USER_ENTERED")
+    return True
 
 # 更新ボタン
 if st.button("🔄 データを更新"):
@@ -924,6 +961,143 @@ with tab_training:
     BIG3 = ["スクワット", "デッドリフト", "ベンチプレス"]
     # 推奨ウェイト係数（rep数に応じた1RMの割合）
     RM_PERCENT = {6: 0.80, 8: 0.75, 10: 0.70}
+
+    # 種目定義（順番, 種目名, デフォルトrep数）
+    EXERCISES = [
+        ("スクワット", 8),
+        ("デッドリフト", 6),
+        ("ベンチプレス", 8),
+        ("ラットプルダウン", 10),
+        ("ダンベルショルダープレス", 10),
+        ("サイドレイズ", 15),
+        ("EZバーカール", 10),
+        ("EZバーエクステンション", 10),
+        ("ハンギングレッグレイズ", 20),
+        ("ロシアンツイスト", 20),
+    ]
+
+    def get_last_session_data(df_t):
+        """直近セッションのデータを種目別に取得。{種目名: {重量, reps: [s1,s2,s3]}}"""
+        if df_t.empty:
+            return {}
+        last_date = df_t["日付"].max()
+        last = df_t[df_t["日付"] == last_date]
+        result = {}
+        for ex_name, group in last.groupby("種目"):
+            group_sorted = group.sort_values("セット番号")
+            w = group_sorted["重量(kg)"].iloc[0] if not group_sorted.empty else 0
+            reps = group_sorted["回数"].tolist()
+            weights = group_sorted["重量(kg)"].tolist()
+            result[ex_name] = {"重量": weights, "reps": reps}
+        return result
+
+    # === 入力フォーム ===
+    with st.expander("📝 トレーニングを記録", expanded=False):
+        last_data = get_last_session_data(df_train)
+
+        form_tab_log, form_tab_1rm = st.tabs(["トレーニングログ", "1RM記録（月末）"])
+
+        # --- トレーニングログフォーム ---
+        with form_tab_log:
+            with st.form("training_form"):
+                train_date = st.date_input("日付", value=datetime.now().date())
+
+                st.markdown("<p style='color:#888; font-size:12px;'>各種目のセットごとに重量とrep数を入力。前回値がデフォルトで入っています。</p>", unsafe_allow_html=True)
+
+                form_data = {}
+                for ex_name, default_reps in EXERCISES:
+                    prev = last_data.get(ex_name, {})
+                    prev_weights = prev.get("重量", [0, 0, 0])
+                    prev_reps = prev.get("reps", [default_reps] * 3)
+                    # 前回値がない場合のフォールバック
+                    while len(prev_weights) < 3:
+                        prev_weights.append(prev_weights[-1] if prev_weights else 0)
+                    while len(prev_reps) < 3:
+                        prev_reps.append(default_reps)
+
+                    st.markdown(f"**{ex_name}**")
+                    cols = st.columns([2, 1, 2, 1, 2, 1])
+                    sets = []
+                    for s in range(3):
+                        w = cols[s * 2].number_input(
+                            f"重量", value=float(prev_weights[s]), step=2.5, min_value=0.0,
+                            key=f"{ex_name}_w{s}", label_visibility="collapsed"
+                        )
+                        r = cols[s * 2 + 1].number_input(
+                            f"rep", value=int(prev_reps[s]), step=1, min_value=0,
+                            key=f"{ex_name}_r{s}", label_visibility="collapsed"
+                        )
+                        sets.append((w, r))
+                    form_data[ex_name] = sets
+                    # ヘッダーラベル（最初の種目のみ表示）
+                    if ex_name == EXERCISES[0][0]:
+                        header_cols = st.columns([2, 1, 2, 1, 2, 1])
+                        for i, label in enumerate(["Set1 kg", "rep", "Set2 kg", "rep", "Set3 kg", "rep"]):
+                            header_cols[i].markdown(f"<p style='color:#555; font-size:10px; text-align:center;'>{label}</p>", unsafe_allow_html=True)
+
+                submitted = st.form_submit_button("💾 記録を保存", use_container_width=True)
+
+                if submitted:
+                    rows = []
+                    date_str = train_date.strftime("%Y/%m/%d")
+                    for ex_name, sets in form_data.items():
+                        for s_idx, (w, r) in enumerate(sets):
+                            if r > 0:  # rep数が0のセットはスキップ
+                                rows.append([date_str, ex_name, w, r, s_idx + 1, "", ""])
+
+                    if rows:
+                        try:
+                            success = append_training_rows(rows)
+                            if success:
+                                st.success(f"✅ {len(rows)}セット分のデータを保存しました！")
+                                st.cache_data.clear()
+                                st.rerun()
+                            else:
+                                st.error("❌ 書き込みに失敗しました。Secrets設定を確認してください。")
+                        except Exception as e:
+                            st.error(f"❌ エラー: {e}")
+                    else:
+                        st.warning("保存するデータがありません。")
+
+        # --- 1RM記録フォーム ---
+        with form_tab_1rm:
+            with st.form("rm_form"):
+                rm_date = st.date_input("測定日", value=datetime.now().date(), key="rm_date")
+                st.markdown("<p style='color:#888; font-size:12px;'>BIG3の1RM実測値を入力。</p>", unsafe_allow_html=True)
+
+                rm_data = {}
+                for ex in BIG3:
+                    # 前回の1RM値をデフォルトに
+                    prev_1rm = 0.0
+                    if not df_1rm.empty:
+                        ex_records = df_1rm[df_1rm["種目"] == ex].sort_values("日付", ascending=False)
+                        if not ex_records.empty and ex_records["1RM(kg)"].notna().any():
+                            prev_1rm = float(ex_records.iloc[0]["1RM(kg)"])
+                    rm_data[ex] = st.number_input(
+                        f"{ex} (kg)", value=prev_1rm, step=2.5, min_value=0.0, key=f"rm_{ex}"
+                    )
+
+                rm_submitted = st.form_submit_button("💾 1RMを保存", use_container_width=True)
+
+                if rm_submitted:
+                    rm_rows = []
+                    date_str = rm_date.strftime("%Y/%m/%d")
+                    for ex, val in rm_data.items():
+                        if val > 0:
+                            rm_rows.append([date_str, ex, val])
+                    if rm_rows:
+                        try:
+                            success = append_1rm_rows(rm_rows)
+                            if success:
+                                st.success(f"✅ BIG3の1RM記録を保存しました！")
+                                st.cache_data.clear()
+                                st.rerun()
+                            else:
+                                st.error("❌ 書き込みに失敗しました。")
+                        except Exception as e:
+                            st.error(f"❌ エラー: {e}")
+
+    st.markdown("<div style='margin-top:16px;'></div>", unsafe_allow_html=True)
 
     def estimate_1rm(weight_kg, reps):
         """Epley式で推定1RMを算出"""
