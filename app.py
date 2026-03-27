@@ -1059,12 +1059,25 @@ with tab_training:
 
         st.markdown("<div style='margin-top:24px;'></div>", unsafe_allow_html=True)
 
+        # === 期間切り替え ===
+        t_period_options = {"全期間": None, "3ヶ月": 90, "1ヶ月": 30, "2週間": 14}
+        t_selected_period = st.segmented_control("表示期間 ", options=list(t_period_options.keys()), default="全期間")
+        t_period_days = t_period_options[t_selected_period]
+
+        if t_period_days:
+            t_cutoff = pd.Timestamp.now() - pd.Timedelta(days=t_period_days)
+            df_train_view = df_train[df_train["日付"] >= t_cutoff]
+            df_weight_view = df[df["日付"] >= t_cutoff]
+        else:
+            df_train_view = df_train
+            df_weight_view = df
+
         # === 体重 vs 総ボリューム 2軸チャート ===
         st.markdown("### 体重 vs トレーニングボリューム")
         st.markdown("<p class='section-desc'>体重が減ってもボリュームが維持できていれば筋肉は守れている。</p>", unsafe_allow_html=True)
 
         # セッション単位の総ボリュームを算出
-        df_session_vol = df_train.groupby(df_train["日付"].dt.date).agg(
+        df_session_vol = df_train_view.groupby(df_train_view["日付"].dt.date).agg(
             総ボリューム=("ボリューム", "sum")
         ).reset_index()
         df_session_vol.columns = ["日付", "総ボリューム"]
@@ -1074,7 +1087,7 @@ with tab_training:
 
         # 体重（左Y軸）
         fig_dual.add_trace(go.Scatter(
-            x=df["日付"], y=df["7日移動平均(kg)"],
+            x=df_weight_view["日付"], y=df_weight_view["7日移動平均(kg)"],
             mode="lines",
             name="体重(7日MA)",
             line=dict(color="#ff4444", width=2),
@@ -1128,7 +1141,7 @@ with tab_training:
                     ))
 
                 # 推定1RM（ログからセッションごとのベスト）
-                ex_logs = df_train[df_train["種目"] == ex].copy()
+                ex_logs = df_train_view[df_train_view["種目"] == ex].copy()
                 if not ex_logs.empty:
                     ex_logs["推定1RM"] = ex_logs.apply(lambda r: estimate_1rm(r["重量(kg)"], r["回数"]), axis=1)
                     ex_est = ex_logs.groupby(ex_logs["日付"].dt.date)["推定1RM"].max().reset_index()
@@ -1162,7 +1175,7 @@ with tab_training:
         st.markdown("### 週次トレーニング頻度")
         st.markdown("<p class='section-desc'>週2〜3回がコミットメント。赤い点線を下回ったらサボり。</p>", unsafe_allow_html=True)
 
-        df_train_dates = df_train.copy()
+        df_train_dates = df_train_view.copy()
         df_train_dates["週"] = df_train_dates["日付"].dt.isocalendar().week.astype(int)
         df_train_dates["年"] = df_train_dates["日付"].dt.isocalendar().year.astype(int)
         df_train_dates["年週"] = df_train_dates["年"].astype(str) + "-W" + df_train_dates["週"].astype(str).str.zfill(2)
@@ -1202,7 +1215,7 @@ with tab_training:
         st.markdown("### 種目別ボリューム推移")
         st.markdown("<p class='section-desc'>漸進性過負荷（Progressive Overload）を確認。右肩上がりなら成長中。</p>", unsafe_allow_html=True)
 
-        all_exercises = sorted(df_train["種目"].dropna().unique().tolist())
+        all_exercises = sorted(df_train_view["種目"].dropna().unique().tolist())
         selected_exercises = st.multiselect(
             "種目を選択",
             options=all_exercises,
@@ -1214,7 +1227,7 @@ with tab_training:
             colors_vol = ["#ff4444", "#ffaa00", "#4488ff", "#00ff88", "#ff88ff", "#88ffff", "#ffff88", "#ff8844", "#8844ff", "#44ff88"]
 
             for i, ex in enumerate(selected_exercises):
-                ex_data = df_train[df_train["種目"] == ex].copy()
+                ex_data = df_train_view[df_train_view["種目"] == ex].copy()
                 ex_daily = ex_data.groupby(ex_data["日付"].dt.date)["ボリューム"].sum().reset_index()
                 ex_daily.columns = ["日付", "ボリューム"]
                 ex_daily["日付"] = pd.to_datetime(ex_daily["日付"])
