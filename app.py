@@ -1017,7 +1017,7 @@ with tab_training:
                     st.markdown(f"**{ex_name}**")
                     sets = []
                     for s in range(3):
-                        cols = st.columns([1, 3, 2])
+                        cols = st.columns([1, 2, 2])
                         cols[0].markdown(f"<p style='color:#555; font-size:12px; line-height:40px; margin:0;'>S{s+1}</p>", unsafe_allow_html=True)
                         w = cols[1].number_input(
                             f"kg", value=float(prev_weights[s]), step=2.5, min_value=0.0,
