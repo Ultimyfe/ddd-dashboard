@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 
 st.set_page_config(
@@ -1037,19 +1038,27 @@ with tab_training:
                 "has_alert": actual_1rm is not None and estimated_1rm is not None and estimated_1rm > actual_1rm,
             })
 
-        # テーブルHTML
-        table_html = '<table class="big3-table"><tr><th>種目</th><th>実測1RM</th><th>推奨重量</th><th>推定1RM</th></tr>'
+        # BIG3テーブル（divベース - Streamlitのtableタグ制限回避）
+        table_html = """
+        <div style="background:#1a1a2e; border-radius:8px; padding:12px; border:1px solid #333;">
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:4px; text-align:center; margin-bottom:8px;">
+                <span style="color:#888; font-size:11px; text-align:left;">種目</span>
+                <span style="color:#888; font-size:11px;">実測1RM</span>
+                <span style="color:#888; font-size:11px;">推奨重量</span>
+                <span style="color:#888; font-size:11px;">推定1RM</span>
+            </div>
+        """
         for row in big3_rows:
             est_color = "#ff4444" if row["has_alert"] else "#ccc"
             table_html += f"""
-            <tr>
-                <td class="exercise-name">{row['種目']}</td>
-                <td>{row['actual_1rm']}<br><span style="color:#555; font-size:10px;">{row['actual_date']}</span></td>
-                <td style="color:#00ff88;">{row['rec_weight']}<br><span style="color:#555; font-size:10px;">×{row['reps']}rep</span></td>
-                <td style="color:{est_color};">{row['estimated_1rm']}</td>
-            </tr>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:4px; text-align:center; padding:10px 0; border-top:1px solid #222;">
+                <span style="color:#fff; font-weight:bold; text-align:left; font-size:14px;">{row['種目']}</span>
+                <span style="color:#ccc; font-size:14px;">{row['actual_1rm']}<br><span style="color:#555; font-size:10px;">{row['actual_date']}</span></span>
+                <span style="color:#00ff88; font-size:14px;">{row['rec_weight']}<br><span style="color:#555; font-size:10px;">×{row['reps']}rep</span></span>
+                <span style="color:{est_color}; font-size:14px;">{row['estimated_1rm']}</span>
+            </div>
             """
-        table_html += '</table>'
+        table_html += '</div>'
         st.markdown(table_html, unsafe_allow_html=True)
 
         # アラート表示
@@ -1072,7 +1081,7 @@ with tab_training:
         df_session_vol.columns = ["日付", "総ボリューム"]
         df_session_vol["日付"] = pd.to_datetime(df_session_vol["日付"])
 
-        fig_dual = go.Figure()
+        fig_dual = make_subplots(specs=[[{"secondary_y": True}]])
 
         # 体重（左Y軸）
         fig_dual.add_trace(go.Scatter(
@@ -1080,8 +1089,7 @@ with tab_training:
             mode="lines",
             name="体重(7日MA)",
             line=dict(color="#ff4444", width=2),
-            yaxis="y",
-        ))
+        ), secondary_y=False)
 
         # 総ボリューム（右Y軸）
         fig_dual.add_trace(go.Scatter(
@@ -1090,8 +1098,7 @@ with tab_training:
             name="セッション総ボリューム",
             line=dict(color="#4488ff", width=1.5),
             marker=dict(size=5),
-            yaxis="y2",
-        ))
+        ), secondary_y=True)
 
         fig_dual.update_layout(
             template="plotly_dark",
@@ -1100,10 +1107,10 @@ with tab_training:
             height=350,
             margin=dict(l=50, r=50, t=30, b=30),
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#ffffff", size=11)),
-            yaxis=dict(title="体重(kg)", titlefont=dict(color="#ff4444"), tickfont=dict(color="#ff4444"), gridcolor="#222"),
-            yaxis2=dict(title="ボリューム(kg)", titlefont=dict(color="#4488ff"), tickfont=dict(color="#4488ff"), overlaying="y", side="right", gridcolor="rgba(0,0,0,0)"),
             xaxis=dict(gridcolor="#222"),
         )
+        fig_dual.update_yaxes(title_text="体重(kg)", titlefont=dict(color="#ff4444"), tickfont=dict(color="#ff4444"), gridcolor="#222", secondary_y=False)
+        fig_dual.update_yaxes(title_text="ボリューム(kg)", titlefont=dict(color="#4488ff"), tickfont=dict(color="#4488ff"), gridcolor="rgba(0,0,0,0)", secondary_y=True)
 
         st.plotly_chart(fig_dual, use_container_width=True)
 
