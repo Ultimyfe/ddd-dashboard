@@ -1132,6 +1132,25 @@ with tab_training:
                         <p class="metric-sub">推奨: {rec_weight:.1f}kg × {default_reps}rep</p>
                     </div>
                     """, unsafe_allow_html=True)
+
+            # BIG3合計 + 体重比（トレーニングデータなし時）
+            big3_total = 0
+            for ex in BIG3:
+                ex_1rm_df = df_1rm[df_1rm["種目"] == ex].sort_values("日付", ascending=False)
+                if not ex_1rm_df.empty and ex_1rm_df["1RM(kg)"].notna().any():
+                    big3_total += ex_1rm_df.iloc[0]["1RM(kg)"]
+            if big3_total > 0:
+                current_weight = df["体重"].dropna().iloc[-1] if not df.empty else 0
+                ratio = big3_total / current_weight if current_weight > 0 else 0
+                target_ratio = big3_total / 75.0
+                st.markdown(f"""
+                <div class="metric-card" style="height:auto; margin-bottom:8px; margin-top:16px;">
+                    <p class="metric-label">BIG3合計</p>
+                    <p class="metric-value info">{big3_total:.0f}<span style="font-size:20px">kg</span></p>
+                    <p class="metric-sub">現在: 体重比 <b style="color:#00ff88;">{ratio:.1f}倍</b>（{current_weight:.1f}kg）</p>
+                    <p class="metric-sub">目標: 体重比 <b style="color:#ff8800;">{target_ratio:.1f}倍</b>（75kg時）</p>
+                </div>
+                """, unsafe_allow_html=True)
     else:
         # === スコアカード ===
         now = pd.Timestamp.now()
@@ -1225,6 +1244,25 @@ with tab_training:
 
         if not alerts and any(r["actual_1rm"] != "-" and r["estimated_1rm"] != "-" for r in big3_rows):
             st.markdown('<div class="big3-alert-ok"><span style="color:#44ff44; font-size:13px;">現在の重量設定は適切。このまま続けろ。</span></div>', unsafe_allow_html=True)
+
+        # BIG3合計 + 体重比
+        big3_total = 0
+        for ex in BIG3:
+            ex_1rm_df = df_1rm[df_1rm["種目"] == ex].sort_values("日付", ascending=False)
+            if not ex_1rm_df.empty and ex_1rm_df["1RM(kg)"].notna().any():
+                big3_total += ex_1rm_df.iloc[0]["1RM(kg)"]
+        if big3_total > 0:
+            current_weight = df["体重"].dropna().iloc[-1] if not df.empty else 0
+            ratio = big3_total / current_weight if current_weight > 0 else 0
+            target_ratio = big3_total / 75.0
+            st.markdown(f"""
+            <div class="metric-card" style="height:auto; margin-bottom:8px; margin-top:16px;">
+                <p class="metric-label">BIG3合計</p>
+                <p class="metric-value info">{big3_total:.0f}<span style="font-size:20px">kg</span></p>
+                <p class="metric-sub">現在: 体重比 <b style="color:#00ff88;">{ratio:.1f}倍</b>（{current_weight:.1f}kg）</p>
+                <p class="metric-sub">目標: 体重比 <b style="color:#ff8800;">{target_ratio:.1f}倍</b>（75kg時）</p>
+            </div>
+            """, unsafe_allow_html=True)
 
         st.markdown("<div style='margin-top:24px;'></div>", unsafe_allow_html=True)
 
