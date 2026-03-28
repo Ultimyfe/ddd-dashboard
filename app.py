@@ -1269,7 +1269,7 @@ with tab_training:
         # === 期間切り替え ===
         t_period_options = {"全期間": None, "1年": 365, "半年": 180, "3ヶ月": 90, "1ヶ月": 30, "2週間": 14}
         t_selected_period = st.segmented_control("表示期間 ", options=list(t_period_options.keys()), default="全期間")
-        t_period_days = t_period_options[t_selected_period]
+        t_period_days = t_period_options.get(t_selected_period) if t_selected_period else None
 
         if t_period_days:
             t_cutoff = pd.Timestamp.now() - pd.Timedelta(days=t_period_days)
@@ -1410,7 +1410,7 @@ with tab_training:
             height=300,
             margin=dict(l=40, r=10, t=30, b=30),
             yaxis=dict(title="回数", gridcolor="#222", dtick=1),
-            xaxis=dict(gridcolor="#222"),
+            xaxis=dict(gridcolor="#222", type="category"),
             showlegend=False,
         )
 
