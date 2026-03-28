@@ -1140,7 +1140,7 @@ with tab_training:
                 if not ex_1rm_df.empty and ex_1rm_df["1RM(kg)"].notna().any():
                     big3_total += ex_1rm_df.iloc[0]["1RM(kg)"]
             if big3_total > 0:
-                current_weight = df["体重"].dropna().iloc[-1] if not df.empty else 0
+                current_weight = df["体重(kg)"].dropna().iloc[-1] if not df.empty else 0
                 ratio = big3_total / current_weight if current_weight > 0 else 0
                 target_ratio = big3_total / 75.0
                 st.markdown(f"""
@@ -1252,7 +1252,7 @@ with tab_training:
             if not ex_1rm_df.empty and ex_1rm_df["1RM(kg)"].notna().any():
                 big3_total += ex_1rm_df.iloc[0]["1RM(kg)"]
         if big3_total > 0:
-            current_weight = df["体重"].dropna().iloc[-1] if not df.empty else 0
+            current_weight = df["体重(kg)"].dropna().iloc[-1] if not df.empty else 0
             ratio = big3_total / current_weight if current_weight > 0 else 0
             target_ratio = big3_total / 75.0
             st.markdown(f"""
