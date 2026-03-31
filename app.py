@@ -304,6 +304,34 @@ def append_1rm_rows(rows):
     ws.append_rows(rows, value_input_option="USER_ENTERED")
     return True
 
+@st.cache_data(ttl=60)
+def load_nutrition_data():
+    """栄養データを読み込み"""
+    try:
+        url = get_sheet_url("栄養")
+        df = pd.read_csv(url)
+        if df.empty or len(df.columns) < 7:
+            return pd.DataFrame(columns=["日付", "摂取kcal", "P(g)", "F(g)", "C(g)", "安静時消費kcal", "アクティブkcal"])
+        df["日付"] = pd.to_datetime(df["日付"])
+        for col in ["摂取kcal", "P(g)", "F(g)", "C(g)", "安静時消費kcal", "アクティブkcal"]:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+        # 合計消費kcal（TDEE）を算出
+        df["消費kcal"] = df["安静時消費kcal"].fillna(0) + df["アクティブkcal"].fillna(0)
+        df.loc[df["消費kcal"] == 0, "消費kcal"] = np.nan
+        return df
+    except Exception:
+        return pd.DataFrame(columns=["日付", "摂取kcal", "P(g)", "F(g)", "C(g)", "安静時消費kcal", "アクティブkcal"])
+
+def append_nutrition_row(row):
+    """栄養データをスプシに追記。rowは[日付, 摂取kcal, P, F, C, 安静時消費kcal, アクティブkcal]"""
+    gc = get_gspread_client()
+    if gc is None:
+        return False
+    sh = gc.open_by_key(SPREADSHEET_ID)
+    ws = sh.worksheet("栄養")
+    ws.append_rows([row], value_input_option="RAW")
+    return True
+
 # 更新ボタン
 if st.button("🔄 データを更新"):
     st.cache_data.clear()
@@ -950,6 +978,359 @@ with tab_weight:
         use_container_width=True,
         height=400,
     )
+
+    # ============================================================
+    # 栄養管理セクション（体重管理タブ内）
+    # ============================================================
+    st.markdown("---")
+    st.markdown("## 🍽️ 栄養管理")
+
+    df_nutr = load_nutrition_data()
+
+    # --- 栄養入力フォーム ---
+    with st.expander("📝 栄養を記録", expanded=False):
+        with st.form("nutrition_form"):
+            nutr_date = st.date_input("日付", value=datetime.now().date(), key="nutr_date")
+
+            # 前回値をプリフィル
+            prev_intake, prev_p, prev_f, prev_c, prev_rest, prev_active = 0, 0, 0, 0, 0, 0
+            if not df_nutr.empty:
+                last_nutr = df_nutr.iloc[-1]
+                prev_intake = int(last_nutr["摂取kcal"]) if pd.notna(last_nutr["摂取kcal"]) else 0
+                prev_p = int(last_nutr["P(g)"]) if pd.notna(last_nutr["P(g)"]) else 0
+                prev_f = int(last_nutr["F(g)"]) if pd.notna(last_nutr["F(g)"]) else 0
+                prev_c = int(last_nutr["C(g)"]) if pd.notna(last_nutr["C(g)"]) else 0
+                prev_rest = int(last_nutr["安静時消費kcal"]) if pd.notna(last_nutr["安静時消費kcal"]) else 0
+                prev_active = int(last_nutr["アクティブkcal"]) if pd.notna(last_nutr["アクティブkcal"]) else 0
+
+            st.markdown("**あすけんから転記**")
+            nutr_intake = st.number_input("摂取kcal", value=prev_intake, step=50, min_value=0, key="nutr_intake")
+
+            st.markdown("**PFCマクロ**")
+            col_p, col_f, col_c = st.columns(3)
+            nutr_p = col_p.number_input("P タンパク質(g)", value=prev_p, step=5, min_value=0, key="nutr_p")
+            nutr_f = col_f.number_input("F 脂質(g)", value=prev_f, step=5, min_value=0, key="nutr_f")
+            nutr_c = col_c.number_input("C 炭水化物(g)", value=prev_c, step=5, min_value=0, key="nutr_c")
+
+            st.markdown("**Apple Watch消費カロリー**")
+            col_rest, col_active = st.columns(2)
+            nutr_rest = col_rest.number_input("安静時消費エネルギー(kcal)", value=prev_rest, step=50, min_value=0, key="nutr_rest")
+            nutr_active = col_active.number_input("アクティブエネルギー(kcal)", value=prev_active, step=50, min_value=0, key="nutr_active")
+
+            nutr_submitted = st.form_submit_button("💾 栄養データを保存", use_container_width=True)
+
+            if nutr_submitted:
+                date_str = nutr_date.strftime("%Y/%m/%d")
+                row = [date_str, nutr_intake, nutr_p, nutr_f, nutr_c, nutr_rest, nutr_active]
+                try:
+                    success = append_nutrition_row(row)
+                    if success:
+                        st.success("✅ 栄養データを保存しました！")
+                        st.cache_data.clear()
+                        st.rerun()
+                    else:
+                        st.error("❌ 書き込みに失敗しました。")
+                except Exception as e:
+                    st.error(f"❌ エラー: {e}")
+
+    # --- 栄養データの表示 ---
+    if not df_nutr.empty and len(df_nutr) >= 2:
+        # 期間フィルタ適用
+        if period_days:
+            cutoff_nutr = today - pd.Timedelta(days=period_days)
+            df_nutr_view = df_nutr[df_nutr["日付"] >= cutoff_nutr]
+        else:
+            df_nutr_view = df_nutr
+
+        if not df_nutr_view.empty:
+            # --- 逆算TDEE計算 ---
+            # 体重データとマージして14日ローリングで算出
+            df_merged = pd.merge(
+                df[["日付", "体重(kg)"]],
+                df_nutr[["日付", "摂取kcal", "消費kcal"]],
+                on="日付", how="inner"
+            ).sort_values("日付")
+
+            reverse_tdee_series = pd.Series(dtype=float)
+            if len(df_merged) >= 14:
+                # 14日ローリング逆算TDEE
+                weight_change_14d = df_merged["体重(kg)"].rolling(14).apply(
+                    lambda x: x.iloc[-1] - x.iloc[0], raw=False
+                )
+                intake_sum_14d = df_merged["摂取kcal"].rolling(14).sum()
+                # 体脂肪1kg ≈ 7,200kcal
+                calorie_surplus_14d = weight_change_14d * 7200
+                reverse_tdee_14d = (intake_sum_14d - calorie_surplus_14d) / 14
+                reverse_tdee_series = pd.Series(reverse_tdee_14d.values, index=df_merged["日付"].values)
+
+            # --- スコアカード ---
+            st.markdown("### 栄養スコアカード")
+
+            # 今週のデータ
+            week_ago = today - pd.Timedelta(days=7)
+            df_nutr_week = df_nutr[df_nutr["日付"] > week_ago]
+
+            avg_balance = "---"
+            balance_color = "info"
+            if not df_nutr_week.empty and df_nutr_week["消費kcal"].notna().any() and df_nutr_week["摂取kcal"].notna().any():
+                week_intake_avg = df_nutr_week["摂取kcal"].mean()
+                week_burn_avg = df_nutr_week["消費kcal"].mean()
+                bal = week_intake_avg - week_burn_avg
+                avg_balance = f"{bal:+.0f}"
+                balance_color = "danger" if bal > 0 else "success"
+
+            # P/体重
+            p_per_kg = "---"
+            p_color = "info"
+            if not df_nutr_week.empty and df_nutr_week["P(g)"].notna().any():
+                avg_p = df_nutr_week["P(g)"].mean()
+                p_ratio = avg_p / weight
+                p_per_kg = f"{p_ratio:.1f}"
+                p_color = "success" if p_ratio >= 2.0 else "warning" if p_ratio >= 1.6 else "danger"
+
+            # 記録率
+            days_in_week = min(7, (today - df_nutr["日付"].min()).days + 1)
+            record_count = len(df_nutr_week)
+            record_rate = record_count / days_in_week * 100 if days_in_week > 0 else 0
+            record_color = "success" if record_rate >= 80 else "warning" if record_rate >= 50 else "danger"
+
+            scorecard_html = f"""
+            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:20px;">
+                <div class="metric-card">
+                    <div style="color:#888; font-size:11px;">今週平均カロリー収支</div>
+                    <div style="color:var(--{balance_color}); font-size:28px; font-weight:bold;">{avg_balance}</div>
+                    <div style="color:#666; font-size:10px;">kcal/日（摂取−消費）</div>
+                </div>
+                <div class="metric-card">
+                    <div style="color:#888; font-size:11px;">P / 体重</div>
+                    <div style="color:var(--{p_color}); font-size:28px; font-weight:bold;">{p_per_kg}</div>
+                    <div style="color:#666; font-size:10px;">g/kg（目標: 2.0以上）</div>
+                </div>
+                <div class="metric-card">
+                    <div style="color:#888; font-size:11px;">今週の記録率</div>
+                    <div style="color:var(--{record_color}); font-size:28px; font-weight:bold;">{record_rate:.0f}%</div>
+                    <div style="color:#666; font-size:10px;">{record_count}/{days_in_week}日</div>
+                </div>
+            </div>
+            """
+            st.markdown(scorecard_html, unsafe_allow_html=True)
+
+            # --- カロリー収支チャート ---
+            st.markdown("### カロリー収支")
+            st.markdown("<p class='section-desc'>摂取が消費を上回ったら太る。赤ゾーンが続いたらアウト。</p>", unsafe_allow_html=True)
+
+            fig_cal = go.Figure()
+
+            # 摂取kcal
+            fig_cal.add_trace(go.Scatter(
+                x=df_nutr_view["日付"], y=df_nutr_view["摂取kcal"],
+                mode="lines+markers",
+                name="摂取kcal",
+                line=dict(color="#ffaa00", width=2),
+                marker=dict(size=5),
+            ))
+
+            # Apple Watch消費kcal
+            df_burn = df_nutr_view[df_nutr_view["消費kcal"].notna() & (df_nutr_view["消費kcal"] > 0)]
+            if not df_burn.empty:
+                fig_cal.add_trace(go.Scatter(
+                    x=df_burn["日付"], y=df_burn["消費kcal"],
+                    mode="lines+markers",
+                    name="消費kcal（Apple Watch）",
+                    line=dict(color="#4488ff", width=2),
+                    marker=dict(size=5),
+                ))
+
+                # 収支エリア塗り分け（摂取と消費の間）
+                merged_view = pd.merge(
+                    df_nutr_view[["日付", "摂取kcal"]],
+                    df_nutr_view[["日付", "消費kcal"]],
+                    on="日付"
+                ).dropna()
+                if not merged_view.empty:
+                    for _, row_data in merged_view.iterrows():
+                        color = "rgba(255,68,68,0.15)" if row_data["摂取kcal"] > row_data["消費kcal"] else "rgba(68,255,68,0.15)"
+                        fig_cal.add_shape(
+                            type="rect",
+                            x0=row_data["日付"] - pd.Timedelta(hours=12),
+                            x1=row_data["日付"] + pd.Timedelta(hours=12),
+                            y0=min(row_data["摂取kcal"], row_data["消費kcal"]),
+                            y1=max(row_data["摂取kcal"], row_data["消費kcal"]),
+                            fillcolor=color,
+                            line=dict(width=0),
+                            layer="below",
+                        )
+
+            # 逆算TDEE
+            if not reverse_tdee_series.empty:
+                rt_dates = pd.to_datetime(reverse_tdee_series.index)
+                if period_days:
+                    mask = rt_dates >= cutoff_nutr
+                    rt_filtered = reverse_tdee_series[mask]
+                    rt_dates_filtered = rt_dates[mask]
+                else:
+                    rt_filtered = reverse_tdee_series
+                    rt_dates_filtered = rt_dates
+                rt_valid = rt_filtered.dropna()
+                if not rt_valid.empty:
+                    fig_cal.add_trace(go.Scatter(
+                        x=pd.to_datetime(rt_valid.index),
+                        y=rt_valid.values,
+                        mode="lines",
+                        name="逆算TDEE（14日）",
+                        line=dict(color="#00ff88", width=2, dash="dash"),
+                    ))
+
+            # 基礎代謝ライン
+            if df_view["基礎代謝(kcal)"].notna().any():
+                latest_bmr = df["基礎代謝(kcal)"].dropna().iloc[-1]
+                fig_cal.add_hline(
+                    y=latest_bmr, line_dash="dot", line_color="#ff4444",
+                    annotation_text=f"基礎代謝 {latest_bmr:.0f}kcal",
+                    annotation_position="top left",
+                    annotation_font_color="#ff4444",
+                )
+
+            fig_cal.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="#0E1117", plot_bgcolor="#0E1117",
+                height=350,
+                margin=dict(l=20, r=20, t=30, b=20),
+                xaxis=dict(gridcolor="#222"),
+                yaxis=dict(gridcolor="#222", title="kcal"),
+                legend=dict(orientation="h", y=-0.15),
+                hovermode="x unified",
+            )
+            st.plotly_chart(fig_cal, use_container_width=True)
+
+            # --- PFCバランス推移 ---
+            st.markdown("### PFCバランス推移")
+            st.markdown("<p class='section-desc'>タンパク質（青）が薄いと筋肉が減る。脂質（赤）が厚いと太る。</p>", unsafe_allow_html=True)
+
+            df_pfc = df_nutr_view[df_nutr_view[["P(g)", "F(g)", "C(g)"]].notna().all(axis=1)].copy()
+            if not df_pfc.empty:
+                # kcal換算
+                df_pfc = df_pfc.copy()
+                df_pfc["P_kcal"] = df_pfc["P(g)"] * 4
+                df_pfc["F_kcal"] = df_pfc["F(g)"] * 9
+                df_pfc["C_kcal"] = df_pfc["C(g)"] * 4
+
+                fig_pfc = go.Figure()
+                fig_pfc.add_trace(go.Bar(x=df_pfc["日付"], y=df_pfc["P_kcal"], name="P（タンパク質）", marker_color="#4488ff"))
+                fig_pfc.add_trace(go.Bar(x=df_pfc["日付"], y=df_pfc["F_kcal"], name="F（脂質）", marker_color="#ff4444"))
+                fig_pfc.add_trace(go.Bar(x=df_pfc["日付"], y=df_pfc["C_kcal"], name="C（炭水化物）", marker_color="#ffaa00"))
+
+                fig_pfc.update_layout(
+                    barmode="stack",
+                    template="plotly_dark",
+                    paper_bgcolor="#0E1117", plot_bgcolor="#0E1117",
+                    height=300,
+                    margin=dict(l=20, r=20, t=30, b=20),
+                    xaxis=dict(gridcolor="#222"),
+                    yaxis=dict(gridcolor="#222", title="kcal"),
+                    legend=dict(orientation="h", y=-0.15),
+                    hovermode="x unified",
+                )
+                st.plotly_chart(fig_pfc, use_container_width=True)
+
+            # --- タンパク質/体重 推移 ---
+            st.markdown("### タンパク質 / 体重")
+            st.markdown("<p class='section-desc'>2.0g/kg以上で筋肉維持。下回ったら赤ゾーン。</p>", unsafe_allow_html=True)
+
+            df_p_ratio = pd.merge(
+                df_nutr_view[["日付", "P(g)"]].dropna(),
+                df[["日付", "体重(kg)"]],
+                on="日付", how="left"
+            )
+            # 体重がない日は直近値で補完
+            df_p_ratio["体重(kg)"] = df_p_ratio["体重(kg)"].ffill().bfill()
+            df_p_ratio = df_p_ratio.dropna(subset=["P(g)", "体重(kg)"])
+
+            if not df_p_ratio.empty:
+                df_p_ratio["P/体重"] = df_p_ratio["P(g)"] / df_p_ratio["体重(kg)"]
+
+                fig_p = go.Figure()
+                fig_p.add_trace(go.Scatter(
+                    x=df_p_ratio["日付"], y=df_p_ratio["P/体重"],
+                    mode="lines+markers",
+                    name="P/体重 (g/kg)",
+                    line=dict(color="#4488ff", width=2),
+                    marker=dict(size=5),
+                ))
+
+                # 目標ライン
+                fig_p.add_hline(y=2.0, line_dash="dash", line_color="#00ff88",
+                                annotation_text="目標 2.0g/kg", annotation_position="top left",
+                                annotation_font_color="#00ff88")
+                # 危険ライン
+                fig_p.add_hline(y=1.6, line_dash="dot", line_color="#ff4444",
+                                annotation_text="最低限 1.6g/kg", annotation_position="bottom left",
+                                annotation_font_color="#ff4444")
+
+                # 赤ゾーン（1.6以下）
+                fig_p.add_hrect(y0=0, y1=1.6, fillcolor="rgba(255,68,68,0.08)", line_width=0)
+
+                fig_p.update_layout(
+                    template="plotly_dark",
+                    paper_bgcolor="#0E1117", plot_bgcolor="#0E1117",
+                    height=280,
+                    margin=dict(l=20, r=20, t=30, b=20),
+                    xaxis=dict(gridcolor="#222"),
+                    yaxis=dict(gridcolor="#222", title="g/kg"),
+                    hovermode="x unified",
+                )
+                st.plotly_chart(fig_p, use_container_width=True)
+
+            # --- 体重 vs カロリー収支 ---
+            st.markdown("### 体重 vs カロリー収支")
+            st.markdown("<p class='section-desc'>食べすぎた週に体重が増える因果関係を見る。7日移動平均で比較。</p>", unsafe_allow_html=True)
+
+            df_weight_cal = pd.merge(
+                df[["日付", "7日移動平均(kg)"]],
+                df_nutr[["日付", "摂取kcal", "消費kcal"]],
+                on="日付", how="inner"
+            ).sort_values("日付")
+
+            if not df_weight_cal.empty and len(df_weight_cal) >= 7:
+                df_weight_cal["カロリー収支"] = df_weight_cal["摂取kcal"] - df_weight_cal["消費kcal"].fillna(0)
+                df_weight_cal["収支_7日MA"] = df_weight_cal["カロリー収支"].rolling(7, min_periods=3).mean()
+
+                if period_days:
+                    df_weight_cal = df_weight_cal[df_weight_cal["日付"] >= cutoff_nutr]
+
+                if not df_weight_cal.empty:
+                    fig_wc = make_subplots(specs=[[{"secondary_y": True}]])
+
+                    fig_wc.add_trace(go.Scatter(
+                        x=df_weight_cal["日付"], y=df_weight_cal["7日移動平均(kg)"],
+                        mode="lines", name="体重（7日MA）",
+                        line=dict(color="#ff4444", width=2),
+                    ), secondary_y=False)
+
+                    fig_wc.add_trace(go.Bar(
+                        x=df_weight_cal["日付"], y=df_weight_cal["収支_7日MA"],
+                        name="カロリー収支（7日MA）",
+                        marker_color=["#ff4444" if v > 0 else "#44ff44" for v in df_weight_cal["収支_7日MA"].fillna(0)],
+                        opacity=0.6,
+                    ), secondary_y=True)
+
+                    fig_wc.add_hline(y=0, line_dash="dot", line_color="#666", secondary_y=True)
+
+                    fig_wc.update_layout(
+                        template="plotly_dark",
+                        paper_bgcolor="#0E1117", plot_bgcolor="#0E1117",
+                        height=350,
+                        margin=dict(l=20, r=20, t=30, b=20),
+                        xaxis=dict(gridcolor="#222"),
+                        legend=dict(orientation="h", y=-0.15),
+                        hovermode="x unified",
+                    )
+                    fig_wc.update_yaxes(title_text="体重 (kg)", gridcolor="#222", secondary_y=False)
+                    fig_wc.update_yaxes(title_text="カロリー収支 (kcal)", gridcolor="#222", secondary_y=True)
+                    st.plotly_chart(fig_wc, use_container_width=True)
+
+    elif df_nutr.empty:
+        st.markdown("<p style='color:#555; text-align:center; padding:40px 0;'>栄養データなし。上の「📝 栄養を記録」から入力を開始してください。</p>", unsafe_allow_html=True)
 
 # ============================================================
 # トレーニングタブ
