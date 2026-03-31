@@ -1371,7 +1371,7 @@ with tab_training:
                 margin=dict(l=40, r=10, t=30, b=30),
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#ffffff", size=10)),
                 yaxis=dict(title="kg", gridcolor="#222"),
-                xaxis=dict(gridcolor="#222"),
+                xaxis=dict(gridcolor="#222", dtick="D1", tickformat="%Y-%m-%d"),
             )
 
             st.plotly_chart(fig_1rm, use_container_width=True)
@@ -1455,7 +1455,7 @@ with tab_training:
                 margin=dict(l=40, r=10, t=30, b=30),
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#ffffff", size=11)),
                 yaxis=dict(title="ボリューム(kg)", gridcolor="#222"),
-                xaxis=dict(gridcolor="#222"),
+                xaxis=dict(gridcolor="#222", dtick="D1", tickformat="%Y-%m-%d"),
             )
 
             st.plotly_chart(fig_vol, use_container_width=True)
