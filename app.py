@@ -322,6 +322,16 @@ def load_nutrition_data():
     except Exception:
         return pd.DataFrame(columns=["日付", "摂取kcal", "P(g)", "F(g)", "C(g)", "安静時消費kcal", "アクティブkcal"])
 
+def append_body_row(row):
+    """体重データをスプシに追記。rowは[日付, 体重, 体脂肪率, 基礎代謝]"""
+    gc = get_gspread_client()
+    if gc is None:
+        return False
+    sh = gc.open_by_key(SPREADSHEET_ID)
+    ws = sh.worksheet("シート1")
+    ws.append_rows([row], value_input_option="RAW")
+    return True
+
 def append_nutrition_row(row):
     """栄養データをスプシに追記。rowは[日付, 摂取kcal, P, F, C, 安静時消費kcal, アクティブkcal]"""
     gc = get_gspread_client()
@@ -387,6 +397,37 @@ tab_weight, tab_training = st.tabs(["⚖️ 体重管理", "🏋️ トレーニ
 # 体重管理タブ
 # ============================================================
 with tab_weight:
+    # === 体重記録フォーム ===
+    with st.expander("📝 体重を記録", expanded=False):
+        with st.form("body_form"):
+            body_date = st.date_input("日付", value=datetime.now().date(), key="body_date")
+
+            # 前回値をプリフィル
+            prev_w = float(latest["体重(kg)"]) if pd.notna(latest["体重(kg)"]) else 0.0
+            prev_fat = float(latest["体脂肪率(%)"]) if pd.notna(latest["体脂肪率(%)"]) else 0.0
+            prev_bmr = float(latest["基礎代謝(kcal)"]) if pd.notna(latest["基礎代謝(kcal)"]) else 0.0
+
+            col_w, col_fat, col_bmr = st.columns(3)
+            body_w = col_w.number_input("体重(kg)", value=prev_w, step=0.1, min_value=0.0, format="%.1f", key="body_w")
+            body_fat = col_fat.number_input("体脂肪率(%)", value=prev_fat, step=0.1, min_value=0.0, format="%.1f", key="body_fat")
+            body_bmr = col_bmr.number_input("基礎代謝(kcal)", value=int(prev_bmr), step=10, min_value=0, key="body_bmr")
+
+            body_submitted = st.form_submit_button("💾 体重データを保存", use_container_width=True)
+
+            if body_submitted:
+                date_str = body_date.strftime("%Y/%m/%d")
+                row = [date_str, body_w, body_fat, body_bmr]
+                try:
+                    success = append_body_row(row)
+                    if success:
+                        st.success("✅ 体重データを保存しました！")
+                        st.cache_data.clear()
+                        st.rerun()
+                    else:
+                        st.error("❌ 書き込みに失敗しました。")
+                except Exception as e:
+                    st.error(f"❌ エラー: {e}")
+
     # === スコアカード（CSS Grid 2x2） ===
     weight = latest["体重(kg)"]
     diff_to_target = weight - TARGET_WEIGHT
