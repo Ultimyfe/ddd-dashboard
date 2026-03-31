@@ -970,7 +970,7 @@ with tab_weight:
     monthly_summary = monthly_summary.sort_index(ascending=False)
 
     st.dataframe(
-        monthly_summary.style.applymap(
+        monthly_summary.style.map(
             lambda v: "color: #ff4444" if isinstance(v, (int, float)) and v > 0 else
                       "color: #44ff44" if isinstance(v, (int, float)) and v < 0 else "",
             subset=["前月比(kg)"]
