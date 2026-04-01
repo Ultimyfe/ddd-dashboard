@@ -1178,10 +1178,13 @@ with tab_nutrition:
             if not df_bal.empty:
                 df_bal["収支"] = df_bal["摂取kcal"] - df_bal["消費kcal"]
                 df_bal["累積収支"] = df_bal["収支"].cumsum()
-                df_bal["累積_kg"] = df_bal["累積収支"] / 7200
+                # 表示期間の初日を基準(0)にする
+                baseline = df_bal["累積収支"].iloc[0] - df_bal["収支"].iloc[0]  # 初日のopen=0
+                df_bal["累積_adj"] = df_bal["累積収支"] - baseline
+                df_bal["累積_kg"] = df_bal["累積_adj"] / 7200
 
                 # 累積収支がそのまま「上=太る、下=痩せる」
-                df_bal["close"] = df_bal["累積収支"]
+                df_bal["close"] = df_bal["累積_adj"]
                 df_bal["open"] = df_bal["close"].shift(1).fillna(0)
                 # ヒゲ: 摂取・消費の平均からの振れ幅
                 intake_dev = (df_bal["摂取kcal"] - df_bal["摂取kcal"].mean()).clip(lower=0) * 0.5
@@ -1237,9 +1240,13 @@ with tab_nutrition:
                     legend=dict(orientation="h", y=-0.12),
                     hovermode="x unified",
                 )
+                # Y軸を0中心に対称にする
+                y_abs_max = max(abs(df_bal["high"].max()), abs(df_bal["low"].min()), 500)
+                y_margin = y_abs_max * 1.15
                 fig_cal.update_yaxes(
                     title_text="累積カロリー収支 (kcal)", gridcolor="#222",
                     zeroline=True, zerolinecolor="#444",
+                    range=[-y_margin, y_margin],
                 )
                 st.plotly_chart(fig_cal, use_container_width=True)
 
