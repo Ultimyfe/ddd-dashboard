@@ -341,7 +341,7 @@ def append_nutrition_row(row):
         return False
     sh = gc.open_by_key(SPREADSHEET_ID)
     ws = sh.worksheet("栄養")
-    ws.append_rows([row], value_input_option="USER_ENTERED")
+    ws.append_rows([row], value_input_option="RAW")
     return True
 
 # 更新ボタン
