@@ -1192,9 +1192,9 @@ with tab_nutrition:
                 df_bal["high"] = df_bal[["open", "close"]].max(axis=1) + intake_dev
                 df_bal["low"] = df_bal[["open", "close"]].min(axis=1) - burn_dev
 
-                fig_cal = go.Figure()
+                fig_cal = make_subplots(specs=[[{"secondary_y": True}]])
 
-                # ローソク足（反転後: 上がる=太る=赤、下がる=痩せる=緑）
+                # ローソク足（上がる=太る=赤、下がる=痩せる=緑）
                 fig_cal.add_trace(go.Candlestick(
                     x=df_bal["日付"],
                     open=df_bal["open"],
@@ -1205,12 +1205,30 @@ with tab_nutrition:
                     increasing_fillcolor="#ff4444",
                     decreasing_line_color="#00ff88",
                     decreasing_fillcolor="#00ff88",
-                    name="日次収支",
+                    name="カロリー収支",
                     whiskerwidth=0.5,
-                ))
+                ), secondary_y=False)
+
+                # 体重変動（初日基準=0の累積差分、第2Y軸）
+                df_weight_period = df[["日付", "体重(kg)"]].dropna()
+                df_weight_period = df_weight_period[
+                    df_weight_period["日付"].isin(df_bal["日付"])
+                ].sort_values("日付")
+                if len(df_weight_period) >= 2:
+                    first_weight = df_weight_period["体重(kg)"].iloc[0]
+                    df_weight_period["体重変動"] = df_weight_period["体重(kg)"] - first_weight
+                    fig_cal.add_trace(go.Scatter(
+                        x=df_weight_period["日付"],
+                        y=df_weight_period["体重変動"],
+                        mode="lines+markers",
+                        name="体重変動",
+                        line=dict(color="#ffffff", width=2),
+                        marker=dict(size=4),
+                        hovertemplate="%{x|%m/%d}<br>体重変動: %{y:+.1f} kg<extra></extra>",
+                    ), secondary_y=True)
 
                 # ゼロライン
-                fig_cal.add_hline(y=0, line_dash="solid", line_color="#555", line_width=1)
+                fig_cal.add_hline(y=0, line_dash="solid", line_color="#555", line_width=1, secondary_y=False)
 
                 # 体脂肪換算アノテーション
                 last_cum = df_bal["累積_kg"].iloc[-1]
@@ -1226,6 +1244,7 @@ with tab_nutrition:
                     bgcolor="rgba(14,17,23,0.8)",
                     bordercolor=cum_color,
                     borderwidth=1,
+                    secondary_y=False,
                 )
 
                 fig_cal.update_layout(
@@ -1240,14 +1259,26 @@ with tab_nutrition:
                     legend=dict(orientation="h", y=-0.12),
                     hovermode="x unified",
                 )
-                # Y軸を0中心に対称にする
+                # 左Y軸: カロリー収支（0中心対称）
                 y_abs_max = max(abs(df_bal["high"].max()), abs(df_bal["low"].min()), 500)
                 y_margin = y_abs_max * 1.15
                 fig_cal.update_yaxes(
                     title_text="累積カロリー収支 (kcal)", gridcolor="#222",
                     zeroline=True, zerolinecolor="#444",
                     range=[-y_margin, y_margin],
+                    secondary_y=False,
                 )
+                # 右Y軸: 体重変動（0中心対称）
+                if len(df_weight_period) >= 2:
+                    w_abs_max = max(abs(df_weight_period["体重変動"].max()), abs(df_weight_period["体重変動"].min()), 0.5)
+                    w_margin = w_abs_max * 1.15
+                    fig_cal.update_yaxes(
+                        title_text="体重変動 (kg)", gridcolor="rgba(0,0,0,0)",
+                        showgrid=False,
+                        zeroline=True, zerolinecolor="#444",
+                        range=[-w_margin, w_margin],
+                        secondary_y=True,
+                    )
                 st.plotly_chart(fig_cal, use_container_width=True)
 
             # --- 摂取 vs 消費 詳細 ---
