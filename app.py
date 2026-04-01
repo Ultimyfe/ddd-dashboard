@@ -1077,7 +1077,7 @@ with tab_nutrition:
     # --- 栄養データの表示 ---
     if not df_nutr.empty and len(df_nutr) >= 1:
         # 期間フィルタ（栄養タブ独自）
-        period_options_nutr = {"全期間": None, "1年": 365, "半年": 180, "3ヶ月": 90, "1ヶ月": 30, "2週間": 14}
+        period_options_nutr = {"全期間": None, "1年": 365, "半年": 180, "3ヶ月": 90, "1ヶ月": 30, "2週間": 14, "1週間": 7}
         selected_period_nutr = st.segmented_control("表示期間", options=list(period_options_nutr.keys()), default="全期間", key="period_nutr")
         period_days_nutr = period_options_nutr[selected_period_nutr]
 
@@ -1165,6 +1165,85 @@ with tab_nutrition:
             </div>
             """
             st.markdown(scorecard_html, unsafe_allow_html=True)
+
+            # --- 週次カロリー収支 ---
+            st.markdown("### 週次カロリー収支")
+            st.markdown("<p class='section-desc'>1週間の平均収支を見る。赤い週が続いたら確実に太る。</p>", unsafe_allow_html=True)
+
+            # 週次集計（月曜始まり）
+            df_weekly = df_nutr_view[
+                df_nutr_view["摂取kcal"].notna() & df_nutr_view["消費kcal"].notna() & (df_nutr_view["消費kcal"] > 0)
+            ].copy()
+
+            if not df_weekly.empty and len(df_weekly) >= 1:
+                df_weekly["収支"] = df_weekly["摂取kcal"] - df_weekly["消費kcal"]
+                df_weekly["週"] = df_weekly["日付"].dt.to_period("W-SUN").apply(lambda x: x.start_time)
+
+                weekly_agg = (
+                    df_weekly
+                    .groupby("週")
+                    .agg(
+                        平均収支=("収支", "mean"),
+                        合計収支=("収支", "sum"),
+                        平均摂取=("摂取kcal", "mean"),
+                        平均消費=("消費kcal", "mean"),
+                        記録日数=("収支", "count"),
+                    )
+                    .reset_index()
+                )
+                weekly_agg["累積_kg"] = weekly_agg["合計収支"].cumsum() / 7200
+                weekly_agg["週ラベル"] = weekly_agg["週"].dt.strftime("%m/%d") + "〜"
+
+                fig_weekly = make_subplots(specs=[[{"secondary_y": True}]])
+
+                # 週次平均収支バー
+                bar_colors_w = ["#ff4444" if v > 0 else "#00ff88" for v in weekly_agg["平均収支"]]
+                fig_weekly.add_trace(go.Bar(
+                    x=weekly_agg["週ラベル"],
+                    y=weekly_agg["平均収支"],
+                    name="平均収支/日",
+                    marker_color=bar_colors_w,
+                    opacity=0.8,
+                    text=[f"{v:+.0f}" for v in weekly_agg["平均収支"]],
+                    textposition="outside",
+                    textfont=dict(size=11),
+                    hovertemplate="%{x}<br>平均収支: %{y:+.0f} kcal/日<extra></extra>",
+                ), secondary_y=False)
+
+                # 累積体脂肪換算ライン（右軸）
+                fig_weekly.add_trace(go.Scatter(
+                    x=weekly_agg["週ラベル"],
+                    y=weekly_agg["累積_kg"],
+                    mode="lines+markers",
+                    name="累積 体脂肪換算",
+                    line=dict(color="#ffaa00", width=2.5),
+                    marker=dict(size=7),
+                    hovertemplate="%{x}<br>累積: %{y:+.2f} kg<extra></extra>",
+                ), secondary_y=True)
+
+                # ゼロライン
+                fig_weekly.add_hline(y=0, line_dash="solid", line_color="#666", line_width=1, secondary_y=False)
+
+                fig_weekly.update_layout(
+                    template="plotly_dark",
+                    paper_bgcolor="#0E1117", plot_bgcolor="#0E1117",
+                    height=380,
+                    margin=dict(l=20, r=60, t=30, b=20),
+                    xaxis=dict(gridcolor="#222", type="category"),
+                    legend=dict(orientation="h", y=-0.15),
+                    hovermode="x unified",
+                )
+                fig_weekly.update_yaxes(
+                    title_text="平均収支 (kcal/日)", gridcolor="#222",
+                    zeroline=True, zerolinecolor="#444",
+                    secondary_y=False,
+                )
+                fig_weekly.update_yaxes(
+                    title_text="累積 体脂肪 (kg)", gridcolor="rgba(0,0,0,0)",
+                    showgrid=False,
+                    secondary_y=True,
+                )
+                st.plotly_chart(fig_weekly, use_container_width=True)
 
             # --- カロリー収支チャート ---
             st.markdown("### カロリー収支")
