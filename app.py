@@ -1166,9 +1166,9 @@ with tab_nutrition:
             """
             st.markdown(scorecard_html, unsafe_allow_html=True)
 
-            # --- カロリー収支チャート ---
+            # --- カロリー収支チャート（ローソク足） ---
             st.markdown("### カロリー収支")
-            st.markdown("<p class='section-desc'>赤が続いたら脂肪が増える。緑を積み上げろ。</p>", unsafe_allow_html=True)
+            st.markdown("<p class='section-desc'>緑=痩せた日、赤=太った日。ヒゲの長さが摂取と消費の振れ幅。</p>", unsafe_allow_html=True)
 
             # 日次収支データ作成
             df_bal = df_nutr_view[
@@ -1178,42 +1178,61 @@ with tab_nutrition:
             if not df_bal.empty:
                 df_bal["収支"] = df_bal["摂取kcal"] - df_bal["消費kcal"]
                 df_bal["収支_7日MA"] = df_bal["収支"].rolling(7, min_periods=3).mean()
+                df_bal["収支_14日MA"] = df_bal["収支"].rolling(14, min_periods=5).mean()
                 df_bal["累積収支"] = df_bal["収支"].cumsum()
-                df_bal["累積_kg"] = df_bal["累積収支"] / 7200  # 体脂肪換算
+                df_bal["累積_kg"] = df_bal["累積収支"] / 7200
+
+                # ローソク足用OHLC
+                # Open=0, Close=収支, High=摂取側の振れ, Low=消費側の振れ
+                # ヒゲで「どれだけ食べたか/燃やしたか」の振れ幅を表現
+                avg_intake = df_bal["摂取kcal"].mean()
+                avg_burn = df_bal["消費kcal"].mean()
+                df_bal["open"] = 0
+                df_bal["close"] = df_bal["収支"]
+                df_bal["high"] = (df_bal["摂取kcal"] - avg_intake).clip(lower=0) + df_bal[["open", "close"]].max(axis=1)
+                df_bal["low"] = df_bal[["open", "close"]].min(axis=1) - (df_bal["消費kcal"] - avg_burn).clip(lower=0)
 
                 fig_cal = make_subplots(specs=[[{"secondary_y": True}]])
 
-                # 日次収支バー（メイン）
-                bar_colors = ["#ff4444" if v > 0 else "#00ff88" for v in df_bal["収支"]]
-                fig_cal.add_trace(go.Bar(
-                    x=df_bal["日付"], y=df_bal["収支"],
+                # ローソク足
+                fig_cal.add_trace(go.Candlestick(
+                    x=df_bal["日付"],
+                    open=df_bal["open"],
+                    high=df_bal["high"],
+                    low=df_bal["low"],
+                    close=df_bal["close"],
+                    increasing_line_color="#00ff88",
+                    increasing_fillcolor="#00ff88",
+                    decreasing_line_color="#ff4444",
+                    decreasing_fillcolor="#ff4444",
                     name="日次収支",
-                    marker_color=bar_colors,
-                    opacity=0.7,
-                    hovertemplate="%{x|%m/%d}<br>収支: %{y:+.0f} kcal<extra></extra>",
+                    whiskerwidth=0.5,
                 ), secondary_y=False)
 
-                # 7日移動平均ライン
+                # 7日移動平均（短期）
                 fig_cal.add_trace(go.Scatter(
                     x=df_bal["日付"], y=df_bal["収支_7日MA"],
-                    mode="lines",
-                    name="7日移動平均",
-                    line=dict(color="#ffffff", width=2.5),
-                    hovertemplate="%{x|%m/%d}<br>7日MA: %{y:+.0f} kcal<extra></extra>",
+                    mode="lines", name="7日MA",
+                    line=dict(color="#4488ff", width=2),
+                ), secondary_y=False)
+
+                # 14日移動平均（中期）
+                fig_cal.add_trace(go.Scatter(
+                    x=df_bal["日付"], y=df_bal["収支_14日MA"],
+                    mode="lines", name="14日MA",
+                    line=dict(color="#ffaa00", width=1.5),
                 ), secondary_y=False)
 
                 # 累積収支ライン（右軸）
-                cum_colors = ["#ff4444" if v > 0 else "#00ff88" for v in df_bal["累積収支"]]
                 fig_cal.add_trace(go.Scatter(
                     x=df_bal["日付"], y=df_bal["累積収支"],
-                    mode="lines",
-                    name="累積収支",
-                    line=dict(color="#ffaa00", width=2, dash="dot"),
+                    mode="lines", name="累積収支",
+                    line=dict(color="#888888", width=1.5, dash="dot"),
                     hovertemplate="%{x|%m/%d}<br>累積: %{y:+,.0f} kcal<extra></extra>",
                 ), secondary_y=True)
 
                 # ゼロライン
-                fig_cal.add_hline(y=0, line_dash="solid", line_color="#666", line_width=1, secondary_y=False)
+                fig_cal.add_hline(y=0, line_dash="solid", line_color="#555", line_width=1, secondary_y=False)
 
                 # 累積の体脂肪換算アノテーション
                 last_cum = df_bal["累積_kg"].iloc[-1]
@@ -1235,19 +1254,22 @@ with tab_nutrition:
                 fig_cal.update_layout(
                     template="plotly_dark",
                     paper_bgcolor="#0E1117", plot_bgcolor="#0E1117",
-                    height=380,
+                    height=420,
                     margin=dict(l=20, r=60, t=30, b=20),
-                    xaxis=dict(gridcolor="#222", tickformat="%m/%d"),
-                    legend=dict(orientation="h", y=-0.15),
+                    xaxis=dict(
+                        gridcolor="#222", tickformat="%m/%d",
+                        rangeslider=dict(visible=False),
+                    ),
+                    legend=dict(orientation="h", y=-0.12),
                     hovermode="x unified",
                 )
                 fig_cal.update_yaxes(
-                    title_text="日次収支 (kcal)", gridcolor="#222",
+                    title_text="カロリー収支 (kcal)", gridcolor="#222",
                     zeroline=True, zerolinecolor="#444",
                     secondary_y=False,
                 )
                 fig_cal.update_yaxes(
-                    title_text="累積収支 (kcal)", gridcolor="rgba(0,0,0,0)",
+                    title_text="累積 (kcal)", gridcolor="rgba(0,0,0,0)",
                     showgrid=False,
                     secondary_y=True,
                 )
