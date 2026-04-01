@@ -214,6 +214,18 @@ from urllib.parse import quote
 def get_sheet_url(sheet_name):
     return f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet={quote(sheet_name)}"
 
+def get_xaxis_dtick(date_series):
+    """表示日数に応じたX軸dtickを返す。少ないときは1日刻み、多いときはPlotly自動"""
+    if date_series.empty:
+        return None
+    n_days = (date_series.max() - date_series.min()).days
+    if n_days <= 31:
+        return "D1"
+    elif n_days <= 90:
+        return "D7"
+    else:
+        return None  # Plotly自動
+
 # データ読み込み（スプシから直接）
 @st.cache_data(ttl=60)
 def load_data():
@@ -788,6 +800,8 @@ with tab_weight:
     else:
         df_view = df
 
+    dtick_weight = get_xaxis_dtick(df_view["日付"])
+
     # === 体重推移グラフ ===
     st.markdown("### 体重の推移")
     st.markdown("<p class='section-desc'>赤線が上がってたらアウト。緑の点線が目標。7月末までにここまで落とす。</p>", unsafe_allow_html=True)
@@ -839,7 +853,7 @@ with tab_weight:
         margin=dict(l=40, r=10, t=30, b=30),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#ffffff", size=11)),
         yaxis=dict(title="kg", gridcolor="#222"),
-        xaxis=dict(gridcolor="#222", tickformat="%m/%d"),
+        xaxis=dict(gridcolor="#222", tickformat="%m/%d", dtick=dtick_weight),
     )
 
     st.plotly_chart(fig_weight, use_container_width=True)
@@ -896,7 +910,7 @@ with tab_weight:
         height=280,
         margin=dict(l=40, r=10, t=20, b=30),
         yaxis=dict(title="%", gridcolor="#222"),
-        xaxis=dict(gridcolor="#222", tickformat="%m/%d"),
+        xaxis=dict(gridcolor="#222", tickformat="%m/%d", dtick=dtick_weight),
         showlegend=False,
     )
     st.plotly_chart(fig_fat, use_container_width=True)
@@ -954,7 +968,7 @@ with tab_weight:
             height=300,
             margin=dict(l=50, r=20, t=20, b=30),
             yaxis=dict(title="kcal", gridcolor="#222"),
-            xaxis=dict(gridcolor="#222", tickformat="%m/%d"),
+            xaxis=dict(gridcolor="#222", tickformat="%m/%d", dtick=dtick_weight),
             showlegend=False,
         )
         st.plotly_chart(fig_bmr, use_container_width=True)
@@ -1086,6 +1100,8 @@ with tab_nutrition:
             df_nutr_view = df_nutr[df_nutr["日付"] >= cutoff_nutr]
         else:
             df_nutr_view = df_nutr
+
+        dtick_nutr = get_xaxis_dtick(df_nutr_view["日付"])
 
         # 体重データのフィルタ済みビュー（基礎代謝ライン等で使用）
         if period_days_nutr:
@@ -1251,6 +1267,7 @@ with tab_nutrition:
                     margin=dict(l=20, r=20, t=30, b=20),
                     xaxis=dict(
                         gridcolor="#222", tickformat="%m/%d",
+                        dtick=dtick_nutr,
                         rangeslider=dict(visible=False),
                     ),
                     legend=dict(orientation="h", y=-0.12),
@@ -1301,7 +1318,7 @@ with tab_nutrition:
                     paper_bgcolor="#0E1117", plot_bgcolor="#0E1117",
                     height=300,
                     margin=dict(l=20, r=20, t=30, b=20),
-                    xaxis=dict(gridcolor="#222", tickformat="%m/%d"),
+                    xaxis=dict(gridcolor="#222", tickformat="%m/%d", dtick=dtick_nutr),
                     yaxis=dict(gridcolor="#222", title="kcal"),
                     legend=dict(orientation="h", y=-0.15),
                     hovermode="x unified",
@@ -1350,7 +1367,7 @@ with tab_nutrition:
                     paper_bgcolor="#0E1117", plot_bgcolor="#0E1117",
                     height=280,
                     margin=dict(l=20, r=20, t=30, b=20),
-                    xaxis=dict(gridcolor="#222", tickformat="%m/%d"),
+                    xaxis=dict(gridcolor="#222", tickformat="%m/%d", dtick=dtick_nutr),
                     yaxis=dict(gridcolor="#222", title="g/kg"),
                     hovermode="x unified",
                 )
@@ -1687,6 +1704,8 @@ with tab_training:
             df_train_view = df_train
             df_weight_view = df
 
+        dtick_train = get_xaxis_dtick(df_train_view["日付"]) if not df_train_view.empty else "D1"
+
         # === 体重 vs 総ボリューム 2軸チャート ===
         st.markdown("### 体重 vs トレーニングボリューム")
         st.markdown("<p class='section-desc'>体重が減ってもボリュームが維持できていれば筋肉は守れている。</p>", unsafe_allow_html=True)
@@ -1724,7 +1743,7 @@ with tab_training:
             height=350,
             margin=dict(l=50, r=50, t=30, b=30),
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#ffffff", size=11)),
-            xaxis=dict(gridcolor="#222", tickformat="%m/%d"),
+            xaxis=dict(gridcolor="#222", tickformat="%m/%d", dtick=dtick_train),
         )
         fig_dual.update_yaxes(title_text="体重(kg)", title_font_color="#ff4444", tickfont_color="#ff4444", gridcolor="#222", secondary_y=False)
         fig_dual.update_yaxes(title_text="ボリューム(kg)", title_font_color="#4488ff", tickfont_color="#4488ff", gridcolor="rgba(0,0,0,0)", secondary_y=True)
@@ -1779,7 +1798,7 @@ with tab_training:
                 margin=dict(l=40, r=10, t=30, b=30),
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#ffffff", size=10)),
                 yaxis=dict(title="kg", gridcolor="#222"),
-                xaxis=dict(gridcolor="#222", dtick="D1", tickformat="%Y-%m-%d"),
+                xaxis=dict(gridcolor="#222", dtick=dtick_train, tickformat="%m/%d"),
             )
 
             st.plotly_chart(fig_1rm, use_container_width=True)
@@ -1863,7 +1882,7 @@ with tab_training:
                 margin=dict(l=40, r=10, t=30, b=30),
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#ffffff", size=11)),
                 yaxis=dict(title="ボリューム(kg)", gridcolor="#222"),
-                xaxis=dict(gridcolor="#222", dtick="D1", tickformat="%Y-%m-%d"),
+                xaxis=dict(gridcolor="#222", dtick=dtick_train, tickformat="%m/%d"),
             )
 
             st.plotly_chart(fig_vol, use_container_width=True)
