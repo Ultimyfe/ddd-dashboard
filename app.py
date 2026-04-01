@@ -1180,49 +1180,31 @@ with tab_nutrition:
                 df_bal["累積収支"] = df_bal["収支"].cumsum()
                 df_bal["累積_kg"] = df_bal["累積収支"] / 7200
 
-                # ローソク足用OHLC（累積収支 = 株価）
-                # Open = 前日の累積収支, Close = 今日の累積収支
-                df_bal["close"] = df_bal["累積収支"]
+                # Y軸反転: 符号を反転して「上=太る、下=痩せる」にする
+                df_bal["cum_inv"] = -df_bal["累積収支"]
+                df_bal["close"] = df_bal["cum_inv"]
                 df_bal["open"] = df_bal["close"].shift(1).fillna(0)
-                # ヒゲ: 摂取が多い日は上に伸びる、消費が多い日は下に伸びる
+                # ヒゲ: 摂取・消費の平均からの振れ幅
                 intake_dev = (df_bal["摂取kcal"] - df_bal["摂取kcal"].mean()).clip(lower=0) * 0.5
                 burn_dev = (df_bal["消費kcal"] - df_bal["消費kcal"].mean()).clip(lower=0) * 0.5
                 df_bal["high"] = df_bal[["open", "close"]].max(axis=1) + intake_dev
                 df_bal["low"] = df_bal[["open", "close"]].min(axis=1) - burn_dev
 
-                # 移動平均（累積収支ベース）
-                df_bal["MA_7"] = df_bal["close"].rolling(7, min_periods=3).mean()
-                df_bal["MA_14"] = df_bal["close"].rolling(14, min_periods=5).mean()
-
                 fig_cal = go.Figure()
 
-                # ローソク足
+                # ローソク足（反転後: 上がる=太る=赤、下がる=痩せる=緑）
                 fig_cal.add_trace(go.Candlestick(
                     x=df_bal["日付"],
                     open=df_bal["open"],
                     high=df_bal["high"],
                     low=df_bal["low"],
                     close=df_bal["close"],
-                    increasing_line_color="#00ff88",
-                    increasing_fillcolor="#00ff88",
-                    decreasing_line_color="#ff4444",
-                    decreasing_fillcolor="#ff4444",
+                    increasing_line_color="#ff4444",
+                    increasing_fillcolor="#ff4444",
+                    decreasing_line_color="#00ff88",
+                    decreasing_fillcolor="#00ff88",
                     name="日次収支",
                     whiskerwidth=0.5,
-                ))
-
-                # 7日移動平均（短期）
-                fig_cal.add_trace(go.Scatter(
-                    x=df_bal["日付"], y=df_bal["MA_7"],
-                    mode="lines", name="7日MA",
-                    line=dict(color="#4488ff", width=2),
-                ))
-
-                # 14日移動平均（中期）
-                fig_cal.add_trace(go.Scatter(
-                    x=df_bal["日付"], y=df_bal["MA_14"],
-                    mode="lines", name="14日MA",
-                    line=dict(color="#ffaa00", width=1.5),
                 ))
 
                 # ゼロライン
@@ -1248,7 +1230,7 @@ with tab_nutrition:
                     template="plotly_dark",
                     paper_bgcolor="#0E1117", plot_bgcolor="#0E1117",
                     height=420,
-                    margin=dict(l=20, r=60, t=30, b=20),
+                    margin=dict(l=20, r=20, t=30, b=20),
                     xaxis=dict(
                         gridcolor="#222", tickformat="%m/%d",
                         rangeslider=dict(visible=False),
