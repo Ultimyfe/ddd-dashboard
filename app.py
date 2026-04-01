@@ -839,7 +839,7 @@ with tab_weight:
         margin=dict(l=40, r=10, t=30, b=30),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#ffffff", size=11)),
         yaxis=dict(title="kg", gridcolor="#222"),
-        xaxis=dict(gridcolor="#222"),
+        xaxis=dict(gridcolor="#222", tickformat="%m/%d"),
     )
 
     st.plotly_chart(fig_weight, use_container_width=True)
@@ -896,7 +896,7 @@ with tab_weight:
         height=280,
         margin=dict(l=40, r=10, t=20, b=30),
         yaxis=dict(title="%", gridcolor="#222"),
-        xaxis=dict(gridcolor="#222"),
+        xaxis=dict(gridcolor="#222", tickformat="%m/%d"),
         showlegend=False,
     )
     st.plotly_chart(fig_fat, use_container_width=True)
@@ -954,7 +954,7 @@ with tab_weight:
             height=300,
             margin=dict(l=50, r=20, t=20, b=30),
             yaxis=dict(title="kcal", gridcolor="#222"),
-            xaxis=dict(gridcolor="#222"),
+            xaxis=dict(gridcolor="#222", tickformat="%m/%d"),
             showlegend=False,
         )
         st.plotly_chart(fig_bmr, use_container_width=True)
@@ -1338,7 +1338,7 @@ with tab_weight:
                     paper_bgcolor="#0E1117", plot_bgcolor="#0E1117",
                     height=300,
                     margin=dict(l=20, r=20, t=30, b=20),
-                    xaxis=dict(gridcolor="#222"),
+                    xaxis=dict(gridcolor="#222", tickformat="%m/%d"),
                     yaxis=dict(gridcolor="#222", title="kcal"),
                     legend=dict(orientation="h", y=-0.15),
                     hovermode="x unified",
@@ -1387,7 +1387,7 @@ with tab_weight:
                     paper_bgcolor="#0E1117", plot_bgcolor="#0E1117",
                     height=280,
                     margin=dict(l=20, r=20, t=30, b=20),
-                    xaxis=dict(gridcolor="#222"),
+                    xaxis=dict(gridcolor="#222", tickformat="%m/%d"),
                     yaxis=dict(gridcolor="#222", title="g/kg"),
                     hovermode="x unified",
                 )
@@ -1433,7 +1433,7 @@ with tab_weight:
                         paper_bgcolor="#0E1117", plot_bgcolor="#0E1117",
                         height=350,
                         margin=dict(l=20, r=20, t=30, b=20),
-                        xaxis=dict(gridcolor="#222"),
+                        xaxis=dict(gridcolor="#222", tickformat="%m/%d"),
                         legend=dict(orientation="h", y=-0.15),
                         hovermode="x unified",
                     )
@@ -1809,7 +1809,7 @@ with tab_training:
             height=350,
             margin=dict(l=50, r=50, t=30, b=30),
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#ffffff", size=11)),
-            xaxis=dict(gridcolor="#222"),
+            xaxis=dict(gridcolor="#222", tickformat="%m/%d"),
         )
         fig_dual.update_yaxes(title_text="体重(kg)", title_font_color="#ff4444", tickfont_color="#ff4444", gridcolor="#222", secondary_y=False)
         fig_dual.update_yaxes(title_text="ボリューム(kg)", title_font_color="#4488ff", tickfont_color="#4488ff", gridcolor="rgba(0,0,0,0)", secondary_y=True)
