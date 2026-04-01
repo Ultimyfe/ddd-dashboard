@@ -1114,53 +1114,50 @@ with tab_nutrition:
                 reverse_tdee_14d = (intake_sum_14d - calorie_surplus_14d) / 14
                 reverse_tdee_series = pd.Series(reverse_tdee_14d.values, index=df_merged["日付"].values)
 
-            # --- スコアカード ---
+            # --- スコアカード（表示期間ベース） ---
             st.markdown("### 栄養スコアカード")
 
-            # 今週のデータ
-            week_ago = today - pd.Timedelta(days=7)
-            df_nutr_week = df_nutr[df_nutr["日付"] > week_ago]
-
-            avg_balance = "---"
+            # 累計カロリー収支
+            total_balance = "---"
             balance_color = "info"
-            if not df_nutr_week.empty and df_nutr_week["消費kcal"].notna().any() and df_nutr_week["摂取kcal"].notna().any():
-                week_intake_avg = df_nutr_week["摂取kcal"].mean()
-                week_burn_avg = df_nutr_week["消費kcal"].mean()
-                bal = week_intake_avg - week_burn_avg
-                avg_balance = f"{bal:+.0f}"
-                balance_color = "danger" if bal > 0 else "success"
+            df_bal_sc = df_nutr_view[df_nutr_view["摂取kcal"].notna() & df_nutr_view["消費kcal"].notna() & (df_nutr_view["消費kcal"] > 0)]
+            if not df_bal_sc.empty:
+                total_bal = (df_bal_sc["摂取kcal"] - df_bal_sc["消費kcal"]).sum()
+                total_balance = f"{total_bal:+,.0f}"
+                balance_color = "danger" if total_bal > 0 else "success"
 
-            # P/体重
+            # P/体重（表示期間平均）
             p_per_kg = "---"
             p_color = "info"
-            if not df_nutr_week.empty and df_nutr_week["P(g)"].notna().any():
-                avg_p = df_nutr_week["P(g)"].mean()
+            if df_nutr_view["P(g)"].notna().any():
+                avg_p = df_nutr_view["P(g)"].mean()
                 p_ratio = avg_p / weight
                 p_per_kg = f"{p_ratio:.1f}"
                 p_color = "success" if p_ratio >= 2.0 else "warning" if p_ratio >= 1.6 else "danger"
 
-            # 記録率
-            days_in_week = min(7, (today - df_nutr["日付"].min()).days + 1)
-            record_count = len(df_nutr_week)
-            record_rate = record_count / days_in_week * 100 if days_in_week > 0 else 0
+            # 記録率（表示期間）
+            period_total_days = (df_nutr_view["日付"].max() - df_nutr_view["日付"].min()).days + 1 if len(df_nutr_view) > 0 else 0
+            record_count = len(df_nutr_view)
+            record_rate = record_count / period_total_days * 100 if period_total_days > 0 else 0
             record_color = "success" if record_rate >= 80 else "warning" if record_rate >= 50 else "danger"
 
+            period_label = selected_period_nutr if selected_period_nutr != "全期間" else "全期間"
             scorecard_html = f"""
             <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:20px;">
                 <div class="metric-card">
-                    <div style="color:#888; font-size:11px;">今週平均カロリー収支</div>
-                    <div style="color:var(--{balance_color}); font-size:28px; font-weight:bold;">{avg_balance}</div>
-                    <div style="color:#666; font-size:10px;">kcal/日（摂取−消費）</div>
+                    <div style="color:#888; font-size:11px;">累計カロリー収支（{period_label}）</div>
+                    <div style="color:var(--{balance_color}); font-size:28px; font-weight:bold;">{total_balance}</div>
+                    <div style="color:#666; font-size:10px;">kcal</div>
                 </div>
                 <div class="metric-card">
-                    <div style="color:#888; font-size:11px;">P / 体重</div>
+                    <div style="color:#888; font-size:11px;">平均 P / 体重（{period_label}）</div>
                     <div style="color:var(--{p_color}); font-size:28px; font-weight:bold;">{p_per_kg}</div>
                     <div style="color:#666; font-size:10px;">g/kg（目標: 2.0以上）</div>
                 </div>
                 <div class="metric-card">
-                    <div style="color:#888; font-size:11px;">今週の記録率</div>
+                    <div style="color:#888; font-size:11px;">記録率（{period_label}）</div>
                     <div style="color:var(--{record_color}); font-size:28px; font-weight:bold;">{record_rate:.0f}%</div>
-                    <div style="color:#666; font-size:10px;">{record_count}/{days_in_week}日</div>
+                    <div style="color:#666; font-size:10px;">{record_count}/{period_total_days}日</div>
                 </div>
             </div>
             """
