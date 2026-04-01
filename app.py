@@ -1281,76 +1281,6 @@ with tab_nutrition:
                     )
                 st.plotly_chart(fig_cal, use_container_width=True)
 
-            # --- 摂取 vs 消費 詳細 ---
-            st.markdown("### 摂取 vs 消費")
-            st.markdown("<p class='section-desc'>オレンジが青を超えたら食いすぎ。基礎代謝を割ったら筋肉が溶ける。</p>", unsafe_allow_html=True)
-
-            fig_detail = go.Figure()
-
-            # 摂取kcal
-            fig_detail.add_trace(go.Scatter(
-                x=df_nutr_view["日付"], y=df_nutr_view["摂取kcal"],
-                mode="lines+markers",
-                name="摂取kcal",
-                line=dict(color="#ffaa00", width=2),
-                marker=dict(size=4),
-                fill="tozeroy",
-                fillcolor="rgba(255,170,0,0.08)",
-            ))
-
-            # Apple Watch消費kcal
-            df_burn = df_nutr_view[df_nutr_view["消費kcal"].notna() & (df_nutr_view["消費kcal"] > 0)]
-            if not df_burn.empty:
-                fig_detail.add_trace(go.Scatter(
-                    x=df_burn["日付"], y=df_burn["消費kcal"],
-                    mode="lines+markers",
-                    name="消費kcal（Apple Watch）",
-                    line=dict(color="#4488ff", width=2),
-                    marker=dict(size=4),
-                    fill="tozeroy",
-                    fillcolor="rgba(68,136,255,0.08)",
-                ))
-
-            # 逆算TDEE
-            if not reverse_tdee_series.empty:
-                rt_dates = pd.to_datetime(reverse_tdee_series.index)
-                if period_days_nutr:
-                    mask = rt_dates >= cutoff_nutr
-                    rt_filtered = reverse_tdee_series[mask]
-                else:
-                    rt_filtered = reverse_tdee_series
-                rt_valid = rt_filtered.dropna()
-                if not rt_valid.empty:
-                    fig_detail.add_trace(go.Scatter(
-                        x=pd.to_datetime(rt_valid.index),
-                        y=rt_valid.values,
-                        mode="lines",
-                        name="逆算TDEE（14日）",
-                        line=dict(color="#00ff88", width=2, dash="dash"),
-                    ))
-
-            # 基礎代謝ライン
-            if df_view_nutr["基礎代謝(kcal)"].notna().any():
-                latest_bmr = df["基礎代謝(kcal)"].dropna().iloc[-1]
-                fig_detail.add_hline(
-                    y=latest_bmr, line_dash="dot", line_color="#ff4444",
-                    annotation_text=f"基礎代謝 {latest_bmr:.0f}kcal",
-                    annotation_position="top left",
-                    annotation_font_color="#ff4444",
-                )
-
-            fig_detail.update_layout(
-                template="plotly_dark",
-                paper_bgcolor="#0E1117", plot_bgcolor="#0E1117",
-                height=320,
-                margin=dict(l=20, r=20, t=30, b=20),
-                xaxis=dict(gridcolor="#222", tickformat="%m/%d"),
-                yaxis=dict(gridcolor="#222", title="kcal"),
-                legend=dict(orientation="h", y=-0.15),
-                hovermode="x unified",
-            )
-            st.plotly_chart(fig_detail, use_container_width=True)
-
             # --- PFCバランス推移 ---
             st.markdown("### PFCバランス推移")
             st.markdown("<p class='section-desc'>タンパク質（青）が薄いと筋肉が減る。脂質（赤）が厚いと太る。</p>", unsafe_allow_html=True)
@@ -1428,54 +1358,6 @@ with tab_nutrition:
                     hovermode="x unified",
                 )
                 st.plotly_chart(fig_p, use_container_width=True)
-
-            # --- 体重 vs カロリー収支 ---
-            st.markdown("### 体重 vs カロリー収支")
-            st.markdown("<p class='section-desc'>食べすぎた週に体重が増える因果関係を見る。7日移動平均で比較。</p>", unsafe_allow_html=True)
-
-            df_weight_cal = pd.merge(
-                df[["日付", "7日移動平均(kg)"]],
-                df_nutr[["日付", "摂取kcal", "消費kcal"]],
-                on="日付", how="inner"
-            ).sort_values("日付")
-
-            if not df_weight_cal.empty and len(df_weight_cal) >= 7:
-                df_weight_cal["カロリー収支"] = df_weight_cal["摂取kcal"] - df_weight_cal["消費kcal"].fillna(0)
-                df_weight_cal["収支_7日MA"] = df_weight_cal["カロリー収支"].rolling(7, min_periods=3).mean()
-
-                if period_days_nutr:
-                    df_weight_cal = df_weight_cal[df_weight_cal["日付"] >= cutoff_nutr]
-
-                if not df_weight_cal.empty:
-                    fig_wc = make_subplots(specs=[[{"secondary_y": True}]])
-
-                    fig_wc.add_trace(go.Scatter(
-                        x=df_weight_cal["日付"], y=df_weight_cal["7日移動平均(kg)"],
-                        mode="lines", name="体重（7日MA）",
-                        line=dict(color="#ff4444", width=2),
-                    ), secondary_y=False)
-
-                    fig_wc.add_trace(go.Bar(
-                        x=df_weight_cal["日付"], y=df_weight_cal["収支_7日MA"],
-                        name="カロリー収支（7日MA）",
-                        marker_color=["#ff4444" if v > 0 else "#44ff44" for v in df_weight_cal["収支_7日MA"].fillna(0)],
-                        opacity=0.6,
-                    ), secondary_y=True)
-
-                    fig_wc.add_hline(y=0, line_dash="dot", line_color="#666", secondary_y=True)
-
-                    fig_wc.update_layout(
-                        template="plotly_dark",
-                        paper_bgcolor="#0E1117", plot_bgcolor="#0E1117",
-                        height=350,
-                        margin=dict(l=20, r=20, t=30, b=20),
-                        xaxis=dict(gridcolor="#222", tickformat="%m/%d"),
-                        legend=dict(orientation="h", y=-0.15),
-                        hovermode="x unified",
-                    )
-                    fig_wc.update_yaxes(title_text="体重 (kg)", gridcolor="#222", secondary_y=False)
-                    fig_wc.update_yaxes(title_text="カロリー収支 (kcal)", gridcolor="#222", secondary_y=True)
-                    st.plotly_chart(fig_wc, use_container_width=True)
 
     elif df_nutr.empty:
         st.markdown("<p style='color:#555; text-align:center; padding:40px 0;'>栄養データなし。上の「📝 栄養を記録」から入力を開始してください。</p>", unsafe_allow_html=True)
