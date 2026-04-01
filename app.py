@@ -1077,7 +1077,7 @@ with tab_weight:
                     st.error(f"❌ エラー: {e}")
 
     # --- 栄養データの表示 ---
-    if not df_nutr.empty and len(df_nutr) >= 2:
+    if not df_nutr.empty and len(df_nutr) >= 1:
         # 期間フィルタ適用
         if period_days:
             cutoff_nutr = today - pd.Timedelta(days=period_days)
@@ -1160,49 +1160,120 @@ with tab_weight:
 
             # --- カロリー収支チャート ---
             st.markdown("### カロリー収支")
-            st.markdown("<p class='section-desc'>摂取が消費を上回ったら太る。赤ゾーンが続いたらアウト。</p>", unsafe_allow_html=True)
+            st.markdown("<p class='section-desc'>赤が続いたら脂肪が増える。緑を積み上げろ。</p>", unsafe_allow_html=True)
 
-            fig_cal = go.Figure()
+            # 日次収支データ作成
+            df_bal = df_nutr_view[
+                df_nutr_view["摂取kcal"].notna() & df_nutr_view["消費kcal"].notna() & (df_nutr_view["消費kcal"] > 0)
+            ].copy()
+
+            if not df_bal.empty:
+                df_bal["収支"] = df_bal["摂取kcal"] - df_bal["消費kcal"]
+                df_bal["収支_7日MA"] = df_bal["収支"].rolling(7, min_periods=3).mean()
+                df_bal["累積収支"] = df_bal["収支"].cumsum()
+                df_bal["累積_kg"] = df_bal["累積収支"] / 7200  # 体脂肪換算
+
+                fig_cal = make_subplots(specs=[[{"secondary_y": True}]])
+
+                # 日次収支バー（メイン）
+                bar_colors = ["#ff4444" if v > 0 else "#00ff88" for v in df_bal["収支"]]
+                fig_cal.add_trace(go.Bar(
+                    x=df_bal["日付"], y=df_bal["収支"],
+                    name="日次収支",
+                    marker_color=bar_colors,
+                    opacity=0.7,
+                    hovertemplate="%{x|%m/%d}<br>収支: %{y:+.0f} kcal<extra></extra>",
+                ), secondary_y=False)
+
+                # 7日移動平均ライン
+                fig_cal.add_trace(go.Scatter(
+                    x=df_bal["日付"], y=df_bal["収支_7日MA"],
+                    mode="lines",
+                    name="7日移動平均",
+                    line=dict(color="#ffffff", width=2.5),
+                    hovertemplate="%{x|%m/%d}<br>7日MA: %{y:+.0f} kcal<extra></extra>",
+                ), secondary_y=False)
+
+                # 累積収支ライン（右軸）
+                cum_colors = ["#ff4444" if v > 0 else "#00ff88" for v in df_bal["累積収支"]]
+                fig_cal.add_trace(go.Scatter(
+                    x=df_bal["日付"], y=df_bal["累積収支"],
+                    mode="lines",
+                    name="累積収支",
+                    line=dict(color="#ffaa00", width=2, dash="dot"),
+                    hovertemplate="%{x|%m/%d}<br>累積: %{y:+,.0f} kcal<extra></extra>",
+                ), secondary_y=True)
+
+                # ゼロライン
+                fig_cal.add_hline(y=0, line_dash="solid", line_color="#666", line_width=1, secondary_y=False)
+
+                # 累積の体脂肪換算アノテーション
+                last_cum = df_bal["累積_kg"].iloc[-1]
+                last_cum_kcal = df_bal["累積収支"].iloc[-1]
+                cum_sign = "+" if last_cum > 0 else ""
+                cum_color = "#ff4444" if last_cum > 0 else "#00ff88"
+                fig_cal.add_annotation(
+                    x=df_bal["日付"].iloc[-1],
+                    y=last_cum_kcal,
+                    text=f"<b>{cum_sign}{last_cum:.2f} kg</b>",
+                    showarrow=True, arrowhead=2, arrowcolor=cum_color,
+                    font=dict(color=cum_color, size=13),
+                    bgcolor="rgba(14,17,23,0.8)",
+                    bordercolor=cum_color,
+                    borderwidth=1,
+                    secondary_y=True,
+                )
+
+                fig_cal.update_layout(
+                    template="plotly_dark",
+                    paper_bgcolor="#0E1117", plot_bgcolor="#0E1117",
+                    height=380,
+                    margin=dict(l=20, r=60, t=30, b=20),
+                    xaxis=dict(gridcolor="#222"),
+                    legend=dict(orientation="h", y=-0.15),
+                    hovermode="x unified",
+                )
+                fig_cal.update_yaxes(
+                    title_text="日次収支 (kcal)", gridcolor="#222",
+                    zeroline=True, zerolinecolor="#444",
+                    secondary_y=False,
+                )
+                fig_cal.update_yaxes(
+                    title_text="累積収支 (kcal)", gridcolor="rgba(0,0,0,0)",
+                    showgrid=False,
+                    secondary_y=True,
+                )
+                st.plotly_chart(fig_cal, use_container_width=True)
+
+            # --- 摂取 vs 消費 詳細 ---
+            st.markdown("### 摂取 vs 消費")
+            st.markdown("<p class='section-desc'>オレンジが青を超えたら食いすぎ。基礎代謝を割ったら筋肉が溶ける。</p>", unsafe_allow_html=True)
+
+            fig_detail = go.Figure()
 
             # 摂取kcal
-            fig_cal.add_trace(go.Scatter(
+            fig_detail.add_trace(go.Scatter(
                 x=df_nutr_view["日付"], y=df_nutr_view["摂取kcal"],
                 mode="lines+markers",
                 name="摂取kcal",
                 line=dict(color="#ffaa00", width=2),
-                marker=dict(size=5),
+                marker=dict(size=4),
+                fill="tozeroy",
+                fillcolor="rgba(255,170,0,0.08)",
             ))
 
             # Apple Watch消費kcal
             df_burn = df_nutr_view[df_nutr_view["消費kcal"].notna() & (df_nutr_view["消費kcal"] > 0)]
             if not df_burn.empty:
-                fig_cal.add_trace(go.Scatter(
+                fig_detail.add_trace(go.Scatter(
                     x=df_burn["日付"], y=df_burn["消費kcal"],
                     mode="lines+markers",
                     name="消費kcal（Apple Watch）",
                     line=dict(color="#4488ff", width=2),
-                    marker=dict(size=5),
+                    marker=dict(size=4),
+                    fill="tozeroy",
+                    fillcolor="rgba(68,136,255,0.08)",
                 ))
-
-                # 収支エリア塗り分け（摂取と消費の間）
-                merged_view = pd.merge(
-                    df_nutr_view[["日付", "摂取kcal"]],
-                    df_nutr_view[["日付", "消費kcal"]],
-                    on="日付"
-                ).dropna()
-                if not merged_view.empty:
-                    for _, row_data in merged_view.iterrows():
-                        color = "rgba(255,68,68,0.15)" if row_data["摂取kcal"] > row_data["消費kcal"] else "rgba(68,255,68,0.15)"
-                        fig_cal.add_shape(
-                            type="rect",
-                            x0=row_data["日付"] - pd.Timedelta(hours=12),
-                            x1=row_data["日付"] + pd.Timedelta(hours=12),
-                            y0=min(row_data["摂取kcal"], row_data["消費kcal"]),
-                            y1=max(row_data["摂取kcal"], row_data["消費kcal"]),
-                            fillcolor=color,
-                            line=dict(width=0),
-                            layer="below",
-                        )
 
             # 逆算TDEE
             if not reverse_tdee_series.empty:
@@ -1210,13 +1281,11 @@ with tab_weight:
                 if period_days:
                     mask = rt_dates >= cutoff_nutr
                     rt_filtered = reverse_tdee_series[mask]
-                    rt_dates_filtered = rt_dates[mask]
                 else:
                     rt_filtered = reverse_tdee_series
-                    rt_dates_filtered = rt_dates
                 rt_valid = rt_filtered.dropna()
                 if not rt_valid.empty:
-                    fig_cal.add_trace(go.Scatter(
+                    fig_detail.add_trace(go.Scatter(
                         x=pd.to_datetime(rt_valid.index),
                         y=rt_valid.values,
                         mode="lines",
@@ -1227,24 +1296,24 @@ with tab_weight:
             # 基礎代謝ライン
             if df_view["基礎代謝(kcal)"].notna().any():
                 latest_bmr = df["基礎代謝(kcal)"].dropna().iloc[-1]
-                fig_cal.add_hline(
+                fig_detail.add_hline(
                     y=latest_bmr, line_dash="dot", line_color="#ff4444",
                     annotation_text=f"基礎代謝 {latest_bmr:.0f}kcal",
                     annotation_position="top left",
                     annotation_font_color="#ff4444",
                 )
 
-            fig_cal.update_layout(
+            fig_detail.update_layout(
                 template="plotly_dark",
                 paper_bgcolor="#0E1117", plot_bgcolor="#0E1117",
-                height=350,
+                height=320,
                 margin=dict(l=20, r=20, t=30, b=20),
                 xaxis=dict(gridcolor="#222"),
                 yaxis=dict(gridcolor="#222", title="kcal"),
                 legend=dict(orientation="h", y=-0.15),
                 hovermode="x unified",
             )
-            st.plotly_chart(fig_cal, use_container_width=True)
+            st.plotly_chart(fig_detail, use_container_width=True)
 
             # --- PFCバランス推移 ---
             st.markdown("### PFCバランス推移")
