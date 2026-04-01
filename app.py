@@ -393,7 +393,7 @@ st.markdown("# 📊 DataDrivenDiet")
 st.markdown(f"<p style='color:#666; font-size:12px;'>最終更新: {today.strftime('%Y/%m/%d')} | データ: {len(df)}日分 | 目標: {TARGET_DATE.strftime('%Y/%m/%d')}まで（残り{days_left}日）</p>", unsafe_allow_html=True)
 
 # === タブ構成 ===
-tab_weight, tab_training = st.tabs(["⚖️ 体重管理", "🏋️ トレーニング"])
+tab_weight, tab_nutrition, tab_training = st.tabs(["⚖️ 体重管理", "🍽️ 栄養管理", "🏋️ トレーニング"])
 
 # ============================================================
 # 体重管理タブ
@@ -1022,12 +1022,10 @@ with tab_weight:
         height=400,
     )
 
-    # ============================================================
-    # 栄養管理セクション（体重管理タブ内）
-    # ============================================================
-    st.markdown("---")
-    st.markdown("## 🍽️ 栄養管理")
-
+# ============================================================
+# 栄養管理タブ
+# ============================================================
+with tab_nutrition:
     df_nutr = load_nutrition_data()
 
     # --- 栄養入力フォーム ---
@@ -1078,12 +1076,22 @@ with tab_weight:
 
     # --- 栄養データの表示 ---
     if not df_nutr.empty and len(df_nutr) >= 1:
-        # 期間フィルタ適用
-        if period_days:
-            cutoff_nutr = today - pd.Timedelta(days=period_days)
+        # 期間フィルタ（栄養タブ独自）
+        period_options_nutr = {"全期間": None, "1年": 365, "半年": 180, "3ヶ月": 90, "1ヶ月": 30, "2週間": 14}
+        selected_period_nutr = st.segmented_control("表示期間", options=list(period_options_nutr.keys()), default="全期間", key="period_nutr")
+        period_days_nutr = period_options_nutr[selected_period_nutr]
+
+        if period_days_nutr:
+            cutoff_nutr = today - pd.Timedelta(days=period_days_nutr)
             df_nutr_view = df_nutr[df_nutr["日付"] >= cutoff_nutr]
         else:
             df_nutr_view = df_nutr
+
+        # 体重データのフィルタ済みビュー（基礎代謝ライン等で使用）
+        if period_days_nutr:
+            df_view_nutr = df[df["日付"] >= cutoff_nutr]
+        else:
+            df_view_nutr = df
 
         if not df_nutr_view.empty:
             # --- 逆算TDEE計算 ---
@@ -1278,7 +1286,7 @@ with tab_weight:
             # 逆算TDEE
             if not reverse_tdee_series.empty:
                 rt_dates = pd.to_datetime(reverse_tdee_series.index)
-                if period_days:
+                if period_days_nutr:
                     mask = rt_dates >= cutoff_nutr
                     rt_filtered = reverse_tdee_series[mask]
                 else:
@@ -1294,7 +1302,7 @@ with tab_weight:
                     ))
 
             # 基礎代謝ライン
-            if df_view["基礎代謝(kcal)"].notna().any():
+            if df_view_nutr["基礎代謝(kcal)"].notna().any():
                 latest_bmr = df["基礎代謝(kcal)"].dropna().iloc[-1]
                 fig_detail.add_hline(
                     y=latest_bmr, line_dash="dot", line_color="#ff4444",
@@ -1407,7 +1415,7 @@ with tab_weight:
                 df_weight_cal["カロリー収支"] = df_weight_cal["摂取kcal"] - df_weight_cal["消費kcal"].fillna(0)
                 df_weight_cal["収支_7日MA"] = df_weight_cal["カロリー収支"].rolling(7, min_periods=3).mean()
 
-                if period_days:
+                if period_days_nutr:
                     df_weight_cal = df_weight_cal[df_weight_cal["日付"] >= cutoff_nutr]
 
                 if not df_weight_cal.empty:
