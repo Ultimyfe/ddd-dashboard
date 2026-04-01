@@ -330,7 +330,8 @@ def append_body_row(row):
         return False
     sh = gc.open_by_key(SPREADSHEET_ID)
     ws = sh.worksheet("シート1")
-    ws.append_rows([row], value_input_option="RAW")
+    # USER_ENTEREDで日付をシリアル値として保存（既存データと型を合わせる）
+    ws.append_rows([row], value_input_option="USER_ENTERED")
     return True
 
 def append_nutrition_row(row):
@@ -340,7 +341,7 @@ def append_nutrition_row(row):
         return False
     sh = gc.open_by_key(SPREADSHEET_ID)
     ws = sh.worksheet("栄養")
-    ws.append_rows([row], value_input_option="RAW")
+    ws.append_rows([row], value_input_option="USER_ENTERED")
     return True
 
 # 更新ボタン
