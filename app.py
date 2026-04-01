@@ -1180,9 +1180,8 @@ with tab_nutrition:
                 df_bal["累積収支"] = df_bal["収支"].cumsum()
                 df_bal["累積_kg"] = df_bal["累積収支"] / 7200
 
-                # Y軸反転: 符号を反転して「上=太る、下=痩せる」にする
-                df_bal["cum_inv"] = -df_bal["累積収支"]
-                df_bal["close"] = df_bal["cum_inv"]
+                # 累積収支がそのまま「上=太る、下=痩せる」
+                df_bal["close"] = df_bal["累積収支"]
                 df_bal["open"] = df_bal["close"].shift(1).fillna(0)
                 # ヒゲ: 摂取・消費の平均からの振れ幅
                 intake_dev = (df_bal["摂取kcal"] - df_bal["摂取kcal"].mean()).clip(lower=0) * 0.5
