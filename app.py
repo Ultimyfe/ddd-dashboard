@@ -1229,7 +1229,7 @@ with tab_weight:
                     paper_bgcolor="#0E1117", plot_bgcolor="#0E1117",
                     height=380,
                     margin=dict(l=20, r=60, t=30, b=20),
-                    xaxis=dict(gridcolor="#222"),
+                    xaxis=dict(gridcolor="#222", tickformat="%m/%d"),
                     legend=dict(orientation="h", y=-0.15),
                     hovermode="x unified",
                 )
@@ -1308,7 +1308,7 @@ with tab_weight:
                 paper_bgcolor="#0E1117", plot_bgcolor="#0E1117",
                 height=320,
                 margin=dict(l=20, r=20, t=30, b=20),
-                xaxis=dict(gridcolor="#222"),
+                xaxis=dict(gridcolor="#222", tickformat="%m/%d"),
                 yaxis=dict(gridcolor="#222", title="kcal"),
                 legend=dict(orientation="h", y=-0.15),
                 hovermode="x unified",
