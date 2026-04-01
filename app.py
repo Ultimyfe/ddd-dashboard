@@ -218,8 +218,9 @@ def get_sheet_url(sheet_name):
 @st.cache_data(ttl=60)
 def load_data():
     url = get_sheet_url("シート1")
-    df = pd.read_csv(url)
-    df["日付"] = pd.to_datetime(df["日付"])
+    df = pd.read_csv(url, usecols=["日付", "体重(kg)", "体脂肪率(%)", "基礎代謝(kcal)"])
+    df["日付"] = pd.to_datetime(df["日付"], errors="coerce")
+    df = df.dropna(subset=["日付"]).reset_index(drop=True)
     # 計算列を追加
     df["7日移動平均(kg)"] = df["体重(kg)"].rolling(7, min_periods=1).mean()
     df["7日移動平均_体脂肪率(%)"] = df["体脂肪率(%)"].rolling(7, min_periods=1).mean()
