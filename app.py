@@ -1810,12 +1810,12 @@ with tab_training:
         st.markdown("<p class='section-desc'>週2〜3回がコミットメント。赤い点線を下回ったらサボり。</p>", unsafe_allow_html=True)
 
         df_train_dates = df_train_view.copy()
-        df_train_dates["週"] = df_train_dates["日付"].dt.isocalendar().week.astype(int)
-        df_train_dates["年"] = df_train_dates["日付"].dt.isocalendar().year.astype(int)
-        df_train_dates["年週"] = df_train_dates["年"].astype(str) + "-W" + df_train_dates["週"].astype(str).str.zfill(2)
+        df_train_dates["週開始"] = df_train_dates["日付"].dt.to_period("W-SUN").apply(lambda p: p.start_time)
+        df_train_dates["年週"] = df_train_dates["週開始"].dt.strftime("%Y-W%V")
 
-        weekly_freq = df_train_dates.groupby("年週")["日付"].apply(lambda x: x.dt.date.nunique()).reset_index()
-        weekly_freq.columns = ["年週", "回数"]
+        weekly_freq = df_train_dates.groupby(["年週", "週開始"])["日付"].apply(lambda x: x.dt.date.nunique()).reset_index()
+        weekly_freq.columns = ["年週", "週開始", "回数"]
+        weekly_freq = weekly_freq.sort_values("週開始")
 
         fig_freq = go.Figure()
         bar_colors = ["#ff4444" if r < 2 else "#ffaa00" if r < 3 else "#00ff88" for r in weekly_freq["回数"]]
@@ -1842,6 +1842,54 @@ with tab_training:
         )
 
         st.plotly_chart(fig_freq, use_container_width=True)
+
+        st.markdown("<div style='margin-top:24px;'></div>", unsafe_allow_html=True)
+
+        # === 週次ボリューム推移 ===
+        st.markdown("### 週次ボリューム推移")
+        st.markdown("<p class='section-desc'>週単位の総負荷量。右肩上がり＝漸進性過負荷が機能している証拠。</p>", unsafe_allow_html=True)
+
+        df_weekly_vol = (
+            df_train_view
+            .assign(週開始=lambda d: d["日付"].dt.to_period("W-SUN").apply(lambda p: p.start_time))
+            .groupby("週開始")["ボリューム"]
+            .sum()
+            .reset_index()
+            .rename(columns={"ボリューム": "週次ボリューム"})
+            .sort_values("週開始")
+        )
+        df_weekly_vol["年週"] = df_weekly_vol["週開始"].dt.strftime("%Y-W%V")
+
+        if not df_weekly_vol.empty:
+            fig_wvol = go.Figure()
+
+            fig_wvol.add_trace(go.Bar(
+                x=df_weekly_vol["年週"], y=df_weekly_vol["週次ボリューム"],
+                marker_color="#4488ff",
+                name="週次ボリューム",
+            ))
+
+            if len(df_weekly_vol) >= 3:
+                fig_wvol.add_trace(go.Scatter(
+                    x=df_weekly_vol["年週"],
+                    y=df_weekly_vol["週次ボリューム"].rolling(3, min_periods=1).mean(),
+                    mode="lines",
+                    name="3週移動平均",
+                    line=dict(color="#ffaa00", width=2, dash="dot"),
+                ))
+
+            fig_wvol.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="#0E1117",
+                plot_bgcolor="#0E1117",
+                height=350,
+                margin=dict(l=40, r=10, t=30, b=30),
+                yaxis=dict(title="ボリューム(kg)", gridcolor="#222"),
+                xaxis=dict(gridcolor="#222", type="category"),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#ffffff", size=11)),
+            )
+
+            st.plotly_chart(fig_wvol, use_container_width=True)
 
         st.markdown("<div style='margin-top:24px;'></div>", unsafe_allow_html=True)
 
